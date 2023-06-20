@@ -44,6 +44,8 @@ jobs:
             BUILDKIT_INLINE_CACHE=1
 
   deploy-prod:
+    needs: release-docker
+
     permissions:
       id-token: write
       contents: read
