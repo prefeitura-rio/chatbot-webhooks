@@ -1,0 +1,77 @@
+name: Deployment - Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  GCR_SERVICE: ${{ secrets.GCR_SERVICE }}
+  GCR_REGION: ${{ secrets.GCR_REGION }}
+  VAULT_ADDRESS: https://vault.dados.rio/
+  VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+
+jobs:
+  release-docker:
+    name: Docker - Release image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+  deploy-prod:
+    permissions:
+      id-token: write
+      contents: read
+
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Google Auth
+        id: auth
+        uses: 'google-github-actions/auth@v0'
+        with:
+          credentials_json: '${{ env.GCP_SA_KEY }}'
+
+      - name: Download environment variables from Vault
+        run: |
+          python3 .github/workflows/scripts/download_envs.py
+
+      - name: Deploy to Google Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v0
+        with:
+          service: ${{ env.GCR_SERVICE }}
+          region: ${{ env.GCR_REGION }}
+          image: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
+          env_vars_file: .env.json

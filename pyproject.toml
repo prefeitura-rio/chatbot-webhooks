@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "chatbot-webhooks"
+version = "0.1.0"
+description = ""
+authors = ["Gabriel Gazola Milan <gabriel.gazola@poli.ufrj.br>"]
+readme = "README.md"
+packages = [{include = "chatbot_webhooks"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+django = "^4.2.2"
+django-cors-headers = "^4.1.0"
+google-cloud-dialogflow-cx = "^1.23.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.3.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
