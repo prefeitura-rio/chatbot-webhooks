@@ -82,12 +82,12 @@ jobs:
           image: docker.io/${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPOSITORY }}:${{ github.sha }}
           secrets:
             ADMINS=CHATBOT_WEBHOOKS_PROD_ADMINS:latest
-            # DB_HOST=${{ steps.import_secrets.outputs.DB_HOST }}
-            # DB_NAME=${{ steps.import_secrets.outputs.DB_NAME }}
-            # DB_PASSWORD=${{ steps.import_secrets.outputs.DB_PASSWORD }}
-            # DB_PORT=${{ steps.import_secrets.outputs.DB_PORT }}
-            # DB_USER=${{ steps.import_secrets.outputs.DB_USER }}
-            # DJANGO_SECRET_KEY=${{ steps.import_secrets.outputs.DJANGO_SECRET_KEY }}
-            # DJANGO_SETTINGS_MODULE=${{ steps.import_secrets.outputs.DJANGO_SETTINGS_MODULE }}
-            # EMAIL_HOST_PASSWORD=${{ steps.import_secrets.outputs.EMAIL_HOST_PASSWORD }}
-            # EMAIL_HOST_USER=${{ steps.import_secrets.outputs.EMAIL_HOST_USER }}
+            DB_HOST=CHATBOT_WEBHOOKS_PROD_DB_HOST:latest
+            DB_NAME=CHATBOT_WEBHOOKS_PROD_DB_NAME:latest
+            DB_PASSWORD=CHATBOT_WEBHOOKS_PROD_DB_PASSWORD:latest
+            DB_PORT=CHATBOT_WEBHOOKS_PROD_DB_PORT:latest
+            DB_USER=CHATBOT_WEBHOOKS_PROD_DB_USER:latest
+            DJANGO_SECRET_KEY=CHATBOT_WEBHOOKS_PROD_DJANGO_SECRET_KEY:latest
+            DJANGO_SETTINGS_MODULE=CHATBOT_WEBHOOKS_PROD_DJANGO_SETTINGS_MODULE:latest
+            EMAIL_HOST_PASSWORD=CHATBOT_WEBHOOKS_PROD_EMAIL_HOST_PASSWORD:latest
+            EMAIL_HOST_USER=CHATBOT_WEBHOOKS_PROD_EMAIL_HOST_USER:latest
