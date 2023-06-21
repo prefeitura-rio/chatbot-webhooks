@@ -79,7 +79,7 @@ jobs:
 
       - name: Download environment variables from Vault
         run: |
-          python3 .github/workflows/scripts/download_envs.py
+          python3 .github/workflows/scripts/download_envs.py chatbot-webhooks-envs-prod
 
       - name: Deploy to Google Cloud Run
         uses: google-github-actions/deploy-cloudrun@v0
