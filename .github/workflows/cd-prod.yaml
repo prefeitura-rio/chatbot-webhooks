@@ -80,7 +80,7 @@ jobs:
           service: ${{ env.GCR_SERVICE }}
           region: ${{ env.GCR_REGION }}
           image: docker.io/${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPOSITORY }}:${{ github.sha }}
-          secrets:
+          secrets: |
             ADMINS=CHATBOT_WEBHOOKS_PROD_ADMINS:latest
             DB_HOST=CHATBOT_WEBHOOKS_PROD_DB_HOST:latest
             DB_NAME=CHATBOT_WEBHOOKS_PROD_DB_NAME:latest
