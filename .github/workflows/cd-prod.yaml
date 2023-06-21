@@ -18,6 +18,7 @@ env:
   GCR_REGION: ${{ secrets.GCR_REGION }}
   VAULT_ADDRESS: https://vault.dados.rio/
   VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+  VAULT_SECRET_PATH: secret/data/chatbot-webhooks-envs-prod
 
 jobs:
   release-docker:
@@ -67,25 +68,29 @@ jobs:
         with:
           ref: main
 
-      - name: Setup Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-deploy.txt
-
       - name: Google Auth
         id: auth
         uses: 'google-github-actions/auth@v0'
         with:
           credentials_json: '${{ env.GCP_SA_KEY }}'
 
-      - name: Download environment variables from Vault
-        run: |
-          python3 .github/workflows/scripts/download_envs.py chatbot-webhooks-envs-prod
+      - name: Import secrets from Vault
+        id: import_secrets
+        uses: hashicorp/vault-action@v2.4.1
+        with:
+          url: ${{ env.VAULT_ADDRESS }}
+          token: ${{ env.VAULT_TOKEN }}
+          secrets: |
+            ${{ env.VAULT_SECRET_PATH }} ADMINS | ADMINS;
+            ${{ env.VAULT_SECRET_PATH }} DB_HOST | DB_HOST;
+            ${{ env.VAULT_SECRET_PATH }} DB_NAME | DB_NAME;
+            ${{ env.VAULT_SECRET_PATH }} DB_PASSWORD | DB_PASSWORD;
+            ${{ env.VAULT_SECRET_PATH }} DB_PORT | DB_PORT;
+            ${{ env.VAULT_SECRET_PATH }} DB_USER | DB_USER;
+            ${{ env.VAULT_SECRET_PATH }} DJANGO_SECRET_KEY | DJANGO_SECRET_KEY;
+            ${{ env.VAULT_SECRET_PATH }} DJANGO_SETTINGS_MODULE | DJANGO_SETTINGS_MODULE;
+            ${{ env.VAULT_SECRET_PATH }} EMAIL_HOST_PASSWORD | EMAIL_HOST_PASSWORD;
+            ${{ env.VAULT_SECRET_PATH }} EMAIL_HOST_USER | EMAIL_HOST_USER;
 
       - name: Deploy to Google Cloud Run
         uses: google-github-actions/deploy-cloudrun@v1
@@ -93,4 +98,14 @@ jobs:
           service: ${{ env.GCR_SERVICE }}
           region: ${{ env.GCR_REGION }}
           image: docker.io/${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPOSITORY }}:${{ github.sha }}
-          env_vars_file: .env.json
+          secrets:
+            ADMINS=${{ steps.import_secrets.outputs.ADMINS }}
+            DB_HOST=${{ steps.import_secrets.outputs.DB_HOST }}
+            DB_NAME=${{ steps.import_secrets.outputs.DB_NAME }}
+            DB_PASSWORD=${{ steps.import_secrets.outputs.DB_PASSWORD }}
+            DB_PORT=${{ steps.import_secrets.outputs.DB_PORT }}
+            DB_USER=${{ steps.import_secrets.outputs.DB_USER }}
+            DJANGO_SECRET_KEY=${{ steps.import_secrets.outputs.DJANGO_SECRET_KEY }}
+            DJANGO_SETTINGS_MODULE=${{ steps.import_secrets.outputs.DJANGO_SETTINGS_MODULE }}
+            EMAIL_HOST_PASSWORD=${{ steps.import_secrets.outputs.EMAIL_HOST_PASSWORD }}
+            EMAIL_HOST_USER=${{ steps.import_secrets.outputs.EMAIL_HOST_USER }}
