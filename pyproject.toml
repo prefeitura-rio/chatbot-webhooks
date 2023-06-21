@@ -3,7 +3,6 @@ name = "chatbot-webhooks"
 version = "0.1.0"
 description = ""
 authors = ["Gabriel Gazola Milan <gabriel.gazola@poli.ufrj.br>"]
-readme = "README.md"
 packages = [{include = "chatbot_webhooks"}]
 
 [tool.poetry.dependencies]
