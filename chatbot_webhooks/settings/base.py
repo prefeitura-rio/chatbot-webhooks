@@ -147,9 +147,21 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Google Cloud Platform
+# DialogFlow
 GCP_PROJECT_ID = getenv_or_action("GCP_PROJECT_ID", action="warn")
 GCP_SERVICE_ACCOUNT = getenv_or_action("GCP_SERVICE_ACCOUNT", action="warn")
 DIALOGFLOW_LOCATION_ID = getenv_or_action("DIALOGFLOW_LOCATION_ID", action="warn")
 DIALOGFLOW_AGENT_ID = getenv_or_action("DIALOGFLOW_AGENT_ID", action="warn")
 DIALOGFLOW_ENVIRONMENT_ID = getenv_or_action("DIALOGFLOW_ENVIRONMENT_ID", action="warn")
 DIALOGFLOW_LANGUAGE_CODE = getenv_or_action("DIALOGFLOW_LANGUAGE_CODE", action="warn")
+# Google Maps API
+GMAPS_API_TOKEN = getenv_or_action("GMAPS_API_TOKEN", action="warn")
+
+# ChatbotLab
+CHATBOT_LAB_API_URL = getenv_or_action("CHATBOT_LAB_API_URL", action="warn")
+CHATBOT_LAB_API_KEY = getenv_or_action("CHATBOT_LAB_API_KEY", action="warn")
+
+# SGRC
+SGRC_URL = getenv_or_action("SGRC_URL", action="warn")
+SGRC_AUTHORIZATION_HEADER = getenv_or_action("SGRC_AUTHORIZATION_HEADER", action="warn")
+SGRC_BODY_TOKEN = getenv_or_action("SGRC_BODY_TOKEN", action="warn")
