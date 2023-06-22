@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
+import base64
+import json
+
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse
+from google.oauth2 import service_account
 
 from chatbot_webhooks.webhooks.models import Token
 
@@ -32,3 +37,11 @@ def authentication_required(view_func):
         return view_func(request, *args, **kwargs)
 
     return wrapper
+
+
+def get_credentials_from_env() -> service_account.Credentials:
+    """
+    Gets credentials from env vars
+    """
+    info: dict = json.loads(base64.b64decode(settings.GCP_SERVICE_ACCOUNT))
+    return service_account.Credentials.from_service_account_info(info)

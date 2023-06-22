@@ -12,6 +12,7 @@ django-cors-headers = "^4.1.0"
 google-cloud-dialogflow-cx = "^1.23.0"
 psycopg2-binary = "^2.9.6"
 gunicorn = "^20.1.0"
+loguru = "^0.7.0"
 
 
 [tool.poetry.group.dev.dependencies]

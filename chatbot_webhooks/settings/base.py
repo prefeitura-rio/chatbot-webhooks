@@ -11,7 +11,25 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+from os import getenv
 from pathlib import Path
+
+from loguru import logger
+
+
+def getenv_or_action(key: str, *, action: str = "raise"):
+    value = getenv(key)
+    if value is None:
+        if action == "raise":
+            raise ValueError(f"Environment variable {key} must be set")
+        elif action == "warn":
+            logger.warning(f"Environment variable {key} is not set")
+        elif action == "ignore":
+            pass
+        else:
+            raise ValueError(f"Unknown action {action}")
+    return value
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -127,3 +145,11 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Google Cloud Platform
+GCP_PROJECT_ID = getenv_or_action("GCP_PROJECT_ID", action="warn")
+GCP_SERVICE_ACCOUNT = getenv_or_action("GCP_SERVICE_ACCOUNT", action="warn")
+DIALOGFLOW_LOCATION_ID = getenv_or_action("DIALOGFLOW_LOCATION_ID", action="warn")
+DIALOGFLOW_AGENT_ID = getenv_or_action("DIALOGFLOW_AGENT_ID", action="warn")
+DIALOGFLOW_ENVIRONMENT_ID = getenv_or_action("DIALOGFLOW_ENVIRONMENT_ID", action="warn")
+DIALOGFLOW_LANGUAGE_CODE = getenv_or_action("DIALOGFLOW_LANGUAGE_CODE", action="warn")

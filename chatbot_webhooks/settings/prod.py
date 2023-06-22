@@ -2,13 +2,7 @@
 from os import getenv
 
 from .base import *  # noqa
-
-
-def nonull_getenv(varname):
-    value = getenv(varname)
-    if value is None:
-        raise ValueError(f"Environment variable {varname} must be set")
-    return value
+from .base import getenv_or_action
 
 
 def get_admins():
@@ -19,25 +13,34 @@ def get_admins():
 
 
 DEBUG = False
-SECRET_KEY = nonull_getenv("DJANGO_SECRET_KEY")
+SECRET_KEY = getenv_or_action("DJANGO_SECRET_KEY")
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": nonull_getenv("DB_NAME"),
-        "USER": nonull_getenv("DB_USER"),
-        "PASSWORD": nonull_getenv("DB_PASSWORD"),
-        "HOST": nonull_getenv("DB_HOST"),
-        "PORT": nonull_getenv("DB_PORT"),
+        "NAME": getenv_or_action("DB_NAME"),
+        "USER": getenv_or_action("DB_USER"),
+        "PASSWORD": getenv_or_action("DB_PASSWORD"),
+        "HOST": getenv_or_action("DB_HOST"),
+        "PORT": getenv_or_action("DB_PORT"),
     }
 }
 
+# E-mail configuration
 ADMINS = get_admins()
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
-EMAIL_HOST_USER = nonull_getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = nonull_getenv("EMAIL_HOST_PASSWORD")
+EMAIL_HOST_USER = getenv_or_action("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = getenv_or_action("EMAIL_HOST_PASSWORD")
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = nonull_getenv("EMAIL_HOST_USER")
-SERVER_EMAIL = nonull_getenv("EMAIL_HOST_USER")
+DEFAULT_FROM_EMAIL = getenv_or_action("EMAIL_HOST_USER")
+SERVER_EMAIL = getenv_or_action("EMAIL_HOST_USER")
+
+# Google Cloud Platform
+GCP_PROJECT_ID = getenv_or_action("GCP_PROJECT_ID")
+GCP_SERVICE_ACCOUNT = getenv_or_action("GCP_SERVICE_ACCOUNT")
+DIALOGFLOW_LOCATION_ID = getenv_or_action("DIALOGFLOW_LOCATION_ID")
+DIALOGFLOW_AGENT_ID = getenv_or_action("DIALOGFLOW_AGENT_ID")
+DIALOGFLOW_ENVIRONMENT_ID = getenv_or_action("DIALOGFLOW_ENVIRONMENT_ID")
+DIALOGFLOW_LANGUAGE_CODE = getenv_or_action("DIALOGFLOW_LANGUAGE_CODE")
