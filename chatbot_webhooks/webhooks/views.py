@@ -68,7 +68,7 @@ def webhook(request: HttpRequest) -> HttpResponse:
 
     # Call the webhook function
     try:
-        response: Union[str, Tuple[str, Dict[str, Any]]] = webhook(body)
+        response: Union[str, Tuple[str, Dict[str, Any]]] = webhook_func(body)
     except Exception as exc:  # noqa
         logger.exception(exc)
         return HttpResponse(content="An error occurred", status=500)
