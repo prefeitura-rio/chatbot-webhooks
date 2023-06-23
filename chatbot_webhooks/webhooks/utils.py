@@ -170,3 +170,78 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     ]
 
     return True
+
+def form_info_update(parameter_list: list, parameter_name: str, parameter_value: any) -> list:
+    indice = -1
+    for i in range(0, len(parameter_list)):
+        if parameter_list[i]["displayName"] == parameter_name:
+            indice = i
+            break
+    if indice == -1:
+        raise ValueError(f"Parameter {parameter_name} was not found in form parameter list")
+    parameter_list[indice]['value'] = parameter_value
+
+    return parameter_list
+
+def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
+
+    """ Efetua a validação do CPF, tanto formatação quando dígito verificadores.
+
+    Parâmetros:
+        cpf (str): CPF a ser validado
+
+    Retorno:
+        bool:
+            - Falso, quando o CPF não possuir o formato 999.999.999-99;
+            - Falso, quando o CPF não possuir 11 caracteres numéricos;
+            - Falso, quando os dígitos verificadores forem inválidos;
+            - Verdadeiro, caso contrário.
+
+    Exemplos:
+
+    >>> validate_CPF('529.982.247-25')
+    True
+    >>> validate_CPF('52998224725')
+    False
+    >>> validate_CPF('111.111.111-11')
+    False
+    """
+
+    cpf = parameters["usuario_cpf"]
+
+    # Obtém apenas os números do CPF, ignorando pontuações
+    numbers = [int(digit) for digit in cpf if digit.isdigit()]
+
+    # Verifica se o CPF possui 11 números ou se todos são iguais:
+    if len(numbers) != 11 or len(set(numbers)) == 1:
+        return False
+
+    # Validação do primeiro dígito verificador:
+    sum_of_products = sum(a*b for a, b in zip(numbers[0:9], range(10, 1, -1)))
+    expected_digit = (sum_of_products * 10 % 11) % 10
+    if numbers[9] != expected_digit:
+        return False
+
+    # Validação do segundo dígito verificador:
+    sum_of_products = sum(a*b for a, b in zip(numbers[0:10], range(11, 1, -1)))
+    expected_digit = (sum_of_products * 10 % 11) % 10
+    if numbers[10] != expected_digit:
+        return False
+
+    cpf_formatado = "".join([str(item) for item in numbers])
+    form_parameters_list = form_info_update(form_parameters_list, "usuario_cpf", cpf_formatado)
+
+    return True
+
+def validate_email(parameters: dict, form_parameters_list: list) -> bool:
+    """
+        Valida se a escrita do email está correta ou não,
+        i.e., se está conforme o padrão dos nomes de email e
+        do domínio.
+        Retorna, True: se estiver ok! E False: se não.
+
+        Ex: validate_email("email@dominio")
+    """
+    email = parameters["usuario_email"]
+    regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+    return re.match(regex, email) is not None
