@@ -69,6 +69,15 @@ def get_ipp_info(parameters: dict) -> bool:
     )
     data = response.json()
 
+    ### Código usado para resposta condicional
+    # if $session.params.abertura_manual = true
+    # Não localizei esse endereço na base do IPP.
+    # else
+    # Logradouro IPP Identificado: $session.params.logradouro_nome_ipp
+    # Código Bairro IPP Identificado: 		$session.params.logradouro_id_bairro_ipp
+    # Código Logradouro IPP Identificado: $session.params.logradouro_id_ipp
+    # endif
+
     try:
         parameters["logradouro_id_ipp"] = str(data["address"]["CL"])
         parameters["logradouro_id_bairro_ipp"] = str(data["address"]["COD_Bairro"])
@@ -76,7 +85,7 @@ def get_ipp_info(parameters: dict) -> bool:
         return True
     except:  # noqa
         logger.info(data)
-        parameters["logradouro_nao_identificado"] = True
+        parameters["abertura_manual"] = True
         return False
 
 

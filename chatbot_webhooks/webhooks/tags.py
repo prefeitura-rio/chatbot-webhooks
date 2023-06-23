@@ -76,14 +76,26 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             if "logradouro_id_bairro_ipp" in parameters
             else "",  # logradouro_id_bairro_ipp
             number=parameters["logradouro_numero"]
-            if "logradouro_numero" in parameters
-            else "",  # logradouro_numero
+            if "logradouro_numero" in parameters and parameters["logradouro_numero"]
+            else "1",  # logradouro_numero
         )
         # Create new ticket
         try:
+            logger.info('Endereço')
+            logger.info(address)
+            logger.info("--------------------")
+            logger.info('Usuario')
+            logger.info(requester)
+            logger.info("--------------------")
+            # Joins description with reference point
+            if "logradouro_ponto_referencia_identificado" in parameters:
+                descricao_completa = f'{parameters["remocao_residuo_descricao"]}. Ponto de referência: {parameters["logradouro_ponto_referencia_identificado"]}'
+            else:
+                descricao_completa = parameters["remocao_residuo_descricao"]
+
             ticket: NewTicket = new_ticket(
                 classification_code=1647,
-                description=parameters["1647_descricao"],
+                description=descricao_completa,
                 address=address,
                 requester=requester,
             )
@@ -196,11 +208,11 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
         if "logradouro_cidade" in parameters
         else ""
     )
-    parameters["logradouro_mensagem_confirmacao"] += (
-        f'Latitude, Longitude:  {parameters["logradouro_latitude"]}, {parameters["logradouro_longitude"]}'  # noqa
-        if "logradouro_latitude" in parameters
-        else ""
-    )
+    # parameters["logradouro_mensagem_confirmacao"] += (
+    #     f'Latitude, Longitude:  {parameters["logradouro_latitude"]}, {parameters["logradouro_longitude"]}'  # noqa
+    #     if "logradouro_latitude" in parameters
+    #     else ""
+    # )
 
     return message, parameters
 
