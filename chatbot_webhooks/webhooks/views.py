@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 from typing import Any, Dict, Tuple, Union
+from uuid import uuid4
 
 from django.http import HttpRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -30,9 +31,28 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
     except Exception:  # noqa
         return HttpResponse(content="Malformed request", status=400)
 
+    # Get user info from the request body
+    try:
+        cpf: str = body["cpf"]
+        email: str = body["email"]
+        phone: str = body["phone"]
+        session_id = ""
+        if phone:
+            session_id = phone
+        elif cpf:
+            session_id = cpf
+        elif email:
+            session_id = email
+    except Exception:  # noqa
+        return HttpResponse(content="Malformed request", status=400)
+
+    if session_id == "":
+        session_id = str(uuid4())
+        logger.warning(f"Session ID not found. Using random UUID: {session_id}")
+
     # Get the answer from Dialogflow CX
     try:
-        answer: str = detect_intent_text(message)
+        answer: str = detect_intent_text(text=message, session_id=session_id)
     except Exception as exc:  # noqa
         logger.exception(exc)
         return HttpResponse(content="An error occurred", status=500)
