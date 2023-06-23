@@ -213,6 +213,7 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
 
     return message, parameters
 
+
 def validador_cpf(request_data: dict) -> tuple[str, dict, list]:
     parameters = request_data["sessionInfo"]["parameters"]
     form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
@@ -222,11 +223,14 @@ def validador_cpf(request_data: dict) -> tuple[str, dict, list]:
 
     return message, parameters, form_parameters_list
 
+
 def validador_email(request_data: dict) -> tuple[str, dict, list]:
     parameters = request_data["sessionInfo"]["parameters"]
     form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
 
-    parameters['usuario_email_valido'] = validate_email(parameters, form_parameters_list)
+    parameters["usuario_email_valido"] = validate_email(
+        parameters, form_parameters_list
+    )
 
     return message, parameters, form_parameters_list
