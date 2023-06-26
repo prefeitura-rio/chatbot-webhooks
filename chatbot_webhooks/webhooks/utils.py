@@ -17,6 +17,11 @@ def address_contains_street_number(address: str) -> bool:
     left_text = address.partition("Rio de Janeiro - RJ")[0]
     return bool(re.search(r"\d", left_text))
 
+def address_find_street_number(address: str) -> str:
+    left_text = address.partition("Rio de Janeiro - RJ")[0]
+    lista_numeros = re.findall(r'\d+', left_text)
+    return lista_numeros[-1]
+
 
 def authentication_required(view_func):
     """
@@ -69,15 +74,6 @@ def get_ipp_info(parameters: dict) -> bool:
     )
     data = response.json()
 
-    ### Código usado para resposta condicional
-    # if $session.params.abertura_manual = true
-    # Não localizei esse endereço na base do IPP.
-    # else
-    # Logradouro IPP Identificado: $session.params.logradouro_nome_ipp
-    # Código Bairro IPP Identificado: 		$session.params.logradouro_id_bairro_ipp
-    # Código Logradouro IPP Identificado: $session.params.logradouro_id_ipp
-    # endif
-
     try:
         parameters["logradouro_id_ipp"] = str(data["address"]["CL"])
         parameters["logradouro_id_bairro_ipp"] = str(data["address"]["COD_Bairro"])
@@ -115,11 +111,13 @@ def google_find_place(address: str, parameters: dict) -> bool:
             find_place_result["candidates"][0]["formatted_address"]
         ):
             logger.info("Contém número da rua")
+            parameters["logradouro_numero_identificado_google"] = True
             return google_geolocator(
                 find_place_result["candidates"][0]["formatted_address"], parameters
             )
         else:
             logger.info("Não contém número da rua")
+            parameters["logradouro_numero_identificado_google"] = False
             endereco_completo = f"{find_place_result['candidates'][0]['name']}, {find_place_result['candidates'][0]['formatted_address']}"  # noqa
             return google_geolocator(endereco_completo, parameters)
     else:
@@ -177,6 +175,21 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     parameters["logradouro_longitude"] = geocode_result[0]["geometry"]["location"][
         "lng"
     ]
+
+    # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
+    # o geolocator não tenha conseguido retorná-lo, raspamos a string para achar esse número.
+    if "logradouro_numero_identificado_google" in parameters:
+        if parameters["logradouro_numero_identificado_google"] and not parameters["logradouro_numero"]:
+            parameters["logradouro_numero"] = address_find_street_number(address)
+        parameters["logradouro_numero_identificado_google"] = None
+    else:
+        pass
+
+    # Fazer essa conversão usando try previne erros mais pra frente
+    try:
+        parameters["logradouro_numero"] = int(parameters["logradouro_numero"])
+    except:
+        logger.info("logradouro_numero não é convertível para tipo inteiro.")
 
     return True
 
