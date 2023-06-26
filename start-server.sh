@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# start-server.sh
-python manage.py makemigrations && python manage.py migrate
-if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] ; then
-  (cd /app; python manage.py createsuperuser --no-input)
-fi
-(cd /app; python manage.py makemigrations && python manage.py migrate)
+# Run migrations
+(cd /app; python manage.py migrate)
+# Start gunicorn in background
 (cd /app; gunicorn chatbot_webhooks.wsgi --user www-data --bind 0.0.0.0:8000 --workers 3 --log-level debug --timeout 180) &
+# Locks until gunicorn is up
+while ! nc -z localhost 8000; do
+echo "Waiting for gunicorn server to start...";
+sleep 1;
+done;
+# Start nginx in foreground
+echo "Starting nginx server..."
 nginx -g "daemon off;"

@@ -14,7 +14,7 @@ RUN /env/bin/pip install --no-cache-dir . && \
     rm nginx.conf
 
 # Install nginx and copy configuration
-RUN apt-get update && apt-get install -y --no-install-recommends nginx curl \
+RUN apt-get update && apt-get install -y --no-install-recommends nginx curl netcat-traditional \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm /etc/nginx/sites-enabled/default
