@@ -18,10 +18,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from chatbot_webhooks.webhooks.views import input_ascsac, webhook
+from chatbot_webhooks.webhooks.views import input_ascsac, input_telegram, webhook
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("chat/ascsac/", input_ascsac),
+    path("chat/telegram/", input_telegram),
     path("webhook/", webhook),
 ]

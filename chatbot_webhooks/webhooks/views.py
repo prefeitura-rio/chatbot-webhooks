@@ -63,6 +63,42 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
 
 @csrf_exempt
 @authentication_required
+def input_telegram(request: HttpRequest) -> HttpResponse:
+    """
+    Handles input messages from Telegram
+    """
+    # Get the request body as JSON
+    try:
+        body: str = request.body.decode("utf-8")
+        body: dict = json.loads(body)
+    except Exception:  # noqa
+        return HttpResponse(content="Invalid request body", status=400)
+
+    # Get the incoming message from the request body
+    try:
+        message: str = body["message"]
+    except Exception:  # noqa
+        return HttpResponse(content="Malformed request", status=400)
+
+    # Get session ID from the request body
+    try:
+        session_id: str = body["session_id"]
+    except Exception:  # noqa
+        return HttpResponse(content="Malformed request", status=400)
+
+    # Get the answer from Dialogflow CX
+    try:
+        answer: str = detect_intent_text(text=message, session_id=session_id)
+    except Exception as exc:  # noqa
+        logger.exception(exc)
+        return HttpResponse(content="An error occurred", status=500)
+
+    # Return the answer
+    return HttpResponse(content=json.dumps({"answer": answer}), status=200)
+
+
+@csrf_exempt
+@authentication_required
 def webhook(request: HttpRequest) -> HttpResponse:
     """
     Handles the webhook requests from Dialogflow CX
