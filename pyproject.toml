@@ -13,7 +13,7 @@ google-cloud-dialogflow-cx = "^1.23.0"
 psycopg2-binary = "^2.9.6"
 gunicorn = "^20.1.0"
 loguru = "0.6"
-prefeitura-rio = "^0.1.3"
+prefeitura-rio = "^0.1.4"
 googlemaps = "^4.10.0"
 requests = "^2.31.0"
 

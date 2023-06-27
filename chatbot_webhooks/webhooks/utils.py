@@ -86,6 +86,43 @@ def get_ipp_info(parameters: dict) -> bool:
         return False
 
 
+def get_user_info(cpf: str) -> dict:
+    """
+    Returns user info from CPF.
+
+    Args:
+        cpf (str): CPF to be searched.
+
+    Returns:
+        dict: User info in the following format:
+            {
+                "id": 12345678,
+                "name": "Fulano de Tal",
+                "cpf": "12345678911",
+                "email": "fulano@detal.com",
+                "phones": [
+                    "21999999999",
+                ],
+            }
+    """
+    url = settings.CHATBOT_INTEGRATIONS_URL
+    key = settings.CHATBOT_INTEGRATIONS_KEY
+    payload = {"cpf": cpf}
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    try:
+        response = requests.request(
+            "POST", url, headers=headers, data=json.dumps(payload)
+        )
+        data = response.json()
+        return data
+    except Exception as exc:  # noqa
+        logger.error(exc)
+        raise Exception(f"Failed to get user info: {exc}") from exc
+
+
 def google_find_place(address: str, parameters: dict) -> bool:
     """
     Uses Google Maps API to get the formatted address using find_place and then call
@@ -213,6 +250,28 @@ def form_info_update(
     parameter_list[indice]["value"] = parameter_value
 
     return parameter_list
+
+
+def mask_email(email: str) -> str:
+    """
+    Mascara um e-mail para proteção do dado pessoal.
+
+    Exemplos:
+    >>> mask_email('admin@example.com')
+    'a****@e******.com'
+    >>> mask_email('fulanodetal@meuemail.com.br')
+    'f**********@m********.com.br'
+    """
+    email = email.split("@")
+    username = email[0]
+    domain = email[1]
+    username = username[0] + "*" * (len(username) - 2) + username[-1]
+    domain_parts = domain.split(".")
+    domain = ""
+    for i in range(0, len(domain_parts) - 1):
+        domain += domain_parts[i][0] + "*" * (len(domain_parts[i]) - 1) + "."
+    domain = domain + ".".join(domain_parts[len(domain_parts) - 1 :])  # noqa
+    return f"{username}@{domain}"
 
 
 def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
