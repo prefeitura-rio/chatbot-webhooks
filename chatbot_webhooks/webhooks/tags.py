@@ -21,7 +21,6 @@ from chatbot_webhooks.webhooks.utils import (
     google_geolocator,
     validate_CPF,
     validate_email,
-    form_info_update,
 )
 
 
@@ -61,7 +60,9 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             # Build data models for opening a ticket
             requester = Requester(
                 # name="",
-                email=parameters["usuario_email"] if "usuario_email" in parameters else "",
+                email=parameters["usuario_email"]
+                if "usuario_email" in parameters
+                else "",
                 cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
             )
             address = Address(
@@ -83,15 +84,18 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             )
             # Create new ticket
             try:
-                logger.info('Endereço')
+                logger.info("Endereço")
                 logger.info(address)
                 logger.info("--------------------")
-                logger.info('Usuario')
+                logger.info("Usuario")
                 logger.info(requester)
                 logger.info("--------------------")
                 # Joins description with reference point
                 if "logradouro_ponto_referencia_identificado" in parameters:
-                    descricao_completa = f'{parameters["remocao_residuo_descricao"]}. Ponto de referência: {parameters["logradouro_ponto_referencia_identificado"]}'
+                    descricao_completa = (
+                        f'{parameters["remocao_residuo_descricao"]}. Ponto de '
+                        f'referência: {parameters["logradouro_ponto_referencia_identificado"]}'
+                    )
                 else:
                     descricao_completa = parameters["remocao_residuo_descricao"]
 
@@ -140,7 +144,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             return message, parameters
         else:
             raise NotImplementedError("Classification code not implemented")
-    except:
+    except:  # noqa
         parameters = request_data["sessionInfo"]["parameters"]
         message = ""
 
@@ -222,15 +226,14 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
         #     if "logradouro_latitude" in parameters
         #     else ""
         # )
-    
-    except:
+
+    except:  # noqa
         parameters = request_data["sessionInfo"]["parameters"]
         message = ""
 
         parameters["encaminhar_transbordo_agora"] = True
 
     return message, parameters
-
 
 
 def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
@@ -263,18 +266,20 @@ def validador_email(request_data: dict) -> tuple[str, dict, list]:
 
     return message, parameters, form_parameters_list
 
+
 def definir_descricao_1647(request_data: dict) -> tuple[str, dict]:
-    #logger.info(request_data)
+    # logger.info(request_data)
     parameters = request_data["sessionInfo"]["parameters"]
-    #form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
+    # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
     ultima_mensagem_usuario = request_data["text"]
-    
-    logger.info(f'Ultima mensagem: \n {ultima_mensagem_usuario}')
+
+    logger.info(f"Ultima mensagem: \n {ultima_mensagem_usuario}")
     parameters["remocao_residuo_descricao"] = ultima_mensagem_usuario
     logger.info(parameters)
 
     return message, parameters
+
 
 def reseta_parametros(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]

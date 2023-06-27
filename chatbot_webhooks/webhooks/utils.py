@@ -17,9 +17,10 @@ def address_contains_street_number(address: str) -> bool:
     left_text = address.partition("Rio de Janeiro - RJ")[0]
     return bool(re.search(r"\d", left_text))
 
+
 def address_find_street_number(address: str) -> str:
     left_text = address.partition("Rio de Janeiro - RJ")[0]
-    lista_numeros = re.findall(r'\d+', left_text)
+    lista_numeros = re.findall(r"\d+", left_text)
     return lista_numeros[-1]
 
 
@@ -179,7 +180,10 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
     # o geolocator não tenha conseguido retorná-lo, raspamos a string para achar esse número.
     if "logradouro_numero_identificado_google" in parameters:
-        if parameters["logradouro_numero_identificado_google"] and not parameters["logradouro_numero"]:
+        if (
+            parameters["logradouro_numero_identificado_google"]
+            and not parameters["logradouro_numero"]
+        ):
             parameters["logradouro_numero"] = address_find_street_number(address)
         parameters["logradouro_numero_identificado_google"] = None
     else:
@@ -188,26 +192,31 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     # Fazer essa conversão usando try previne erros mais pra frente
     try:
         parameters["logradouro_numero"] = int(parameters["logradouro_numero"])
-    except:
+    except:  # noqa
         logger.info("logradouro_numero não é convertível para tipo inteiro.")
 
     return True
 
-def form_info_update(parameter_list: list, parameter_name: str, parameter_value: any) -> list:
+
+def form_info_update(
+    parameter_list: list, parameter_name: str, parameter_value: any
+) -> list:
     indice = -1
     for i in range(0, len(parameter_list)):
         if parameter_list[i]["displayName"] == parameter_name:
             indice = i
             break
     if indice == -1:
-        raise ValueError(f"Parameter {parameter_name} was not found in form parameter list")
-    parameter_list[indice]['value'] = parameter_value
+        raise ValueError(
+            f"Parameter {parameter_name} was not found in form parameter list"
+        )
+    parameter_list[indice]["value"] = parameter_value
 
     return parameter_list
 
-def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
 
-    """ Efetua a validação do CPF, tanto formatação quando dígito verificadores.
+def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
+    """Efetua a validação do CPF, tanto formatação quando dígito verificadores.
 
     Parâmetros:
         cpf (str): CPF a ser validado
@@ -239,31 +248,34 @@ def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
         return False
 
     # Validação do primeiro dígito verificador:
-    sum_of_products = sum(a*b for a, b in zip(numbers[0:9], range(10, 1, -1)))
+    sum_of_products = sum(a * b for a, b in zip(numbers[0:9], range(10, 1, -1)))
     expected_digit = (sum_of_products * 10 % 11) % 10
     if numbers[9] != expected_digit:
         return False
 
     # Validação do segundo dígito verificador:
-    sum_of_products = sum(a*b for a, b in zip(numbers[0:10], range(11, 1, -1)))
+    sum_of_products = sum(a * b for a, b in zip(numbers[0:10], range(11, 1, -1)))
     expected_digit = (sum_of_products * 10 % 11) % 10
     if numbers[10] != expected_digit:
         return False
 
     cpf_formatado = "".join([str(item) for item in numbers])
-    form_parameters_list = form_info_update(form_parameters_list, "usuario_cpf", cpf_formatado)
+    form_parameters_list = form_info_update(
+        form_parameters_list, "usuario_cpf", cpf_formatado
+    )
 
     return True
 
+
 def validate_email(parameters: dict, form_parameters_list: list) -> bool:
     """
-        Valida se a escrita do email está correta ou não,
-        i.e., se está conforme o padrão dos nomes de email e
-        do domínio.
-        Retorna, True: se estiver ok! E False: se não.
+    Valida se a escrita do email está correta ou não,
+    i.e., se está conforme o padrão dos nomes de email e
+    do domínio.
+    Retorna, True: se estiver ok! E False: se não.
 
-        Ex: validate_email("email@dominio")
+    Ex: validate_email("email@dominio")
     """
     email = parameters["usuario_email"]
-    regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+    regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return re.match(regex, email) is not None
