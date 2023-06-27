@@ -124,6 +124,7 @@ def get_user_info(cpf: str) -> dict:
         response = requests.request(
             "POST", url, headers=headers, data=json.dumps(payload)
         )
+        response.raise_for_status()
         data = response.json()
         return data
     except Exception as exc:  # noqa
@@ -333,6 +334,7 @@ def new_ticket(
                 f"- Protocolo: {new_ticket.protocol_id}\n"
                 f"- Chamado: {new_ticket.ticket_id}"
             ),
+            webhook_url=settings.DISCORD_WEBHOOK_NEW_TICKET,
         )
         return new_ticket
     except Exception as exc:  # noqa

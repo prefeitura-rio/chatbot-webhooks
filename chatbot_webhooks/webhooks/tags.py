@@ -143,6 +143,10 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.exception(exc)
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
             return message, parameters
         else:
             raise NotImplementedError("Classification code not implemented")
@@ -274,7 +278,12 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     cpf = parameters["usuario_cpf"]
     email_dialogflow = str(parameters["usuario_email"]).strip()
-    user_info = get_user_info(cpf)
+    try:
+        user_info = get_user_info(cpf)
+    except:  # noqa
+        parameters["usuario_email_confirmado"] = True
+        parameters["usuario_email_cadastrado"] = None
+        return message, parameters
     email_sgrc = str(user_info["email"]).strip()
     if email_dialogflow == email_sgrc:
         parameters["usuario_email_confirmado"] = True
