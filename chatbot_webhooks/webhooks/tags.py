@@ -3,7 +3,6 @@ from typing import Tuple
 
 from django.conf import settings
 from loguru import logger
-from prefeitura_rio.integrations.sgrc import new_ticket
 from prefeitura_rio.integrations.sgrc.exceptions import (
     SGRCMalformedBodyException,
     SGRCInvalidBodyException,
@@ -21,6 +20,7 @@ from chatbot_webhooks.webhooks.utils import (
     google_find_place,
     google_geolocator,
     mask_email,
+    new_ticket,
     validate_CPF,
     validate_email,
 )

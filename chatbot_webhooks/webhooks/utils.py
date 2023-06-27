@@ -1,13 +1,21 @@
 # -*- coding: utf-8 -*-
 import base64
+from datetime import datetime
 import json
 import re
+from typing import Union
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from google.oauth2 import service_account
 import googlemaps
 from loguru import logger
+from prefeitura_rio.integrations.sgrc import (
+    new_ticket as sgrc_new_ticket,
+    Address,
+    NewTicket,
+    Requester,
+)
 import requests
 
 from chatbot_webhooks.webhooks.models import Token
@@ -272,6 +280,88 @@ def mask_email(email: str) -> str:
         domain += domain_parts[i][0] + "*" * (len(domain_parts[i]) - 1) + "."
     domain = domain + ".".join(domain_parts[len(domain_parts) - 1 :])  # noqa
     return f"{username}@{domain}"
+
+
+def new_ticket(
+    classification_code: str,
+    description: str,
+    address: Address,
+    date_time: Union[datetime, str] = None,
+    requester: Requester = None,
+    occurrence_origin_code: str = "28",
+) -> NewTicket:
+    """
+    Creates a new ticket.
+
+    Args:
+        classification_code (str): The classification code.
+        description (str): The description of the occurrence.
+        address (Address): The address of the occurrence.
+        date_time (Union[datetime, str], optional): The date and time of the occurrence. When
+            converted to string, it must be in the following format: "%Y-%m-%dT%H:%M:%S". Defaults
+            to `None`, which will be replaced by the current date and time.
+        requester (Requester, optional): The requester information. Defaults to `None`, which will
+            be replaced by an empty `Requester` object.
+        occurrence_origin_code (str, optional): The occurrence origin code (e.g. "13" for
+            "Web App"). Defaults to "28".
+
+    Returns:
+        NewTicket: The new ticket.
+
+    Raises:
+        BaseSGRCException: If an unexpected exception occurs.
+        SGRCBusinessRuleException: If the request violates a business rule.
+        SGRCDuplicateTicketException: If the request tries to create a duplicate ticket.
+        SGRCEquivalentTicketException: If the request tries to create an equivalent ticket.
+        SGRCInternalErrorException: If the request causes an internal error.
+        SGRCInvalidBodyException: If the request body is invalid.
+        SGRCMalformedBodyException: If the request body is malformed.
+        ValueError: If any of the arguments is invalid.
+    """
+    try:
+        new_ticket: NewTicket = sgrc_new_ticket(
+            classification_code=classification_code,
+            description=description,
+            address=address,
+            date_time=date_time,
+            requester=requester,
+            occurrence_origin_code=occurrence_origin_code,
+        )
+        send_discord_message(
+            message=(
+                "Novo chamado criado:\n"
+                f"- Protocolo: {new_ticket.protocol_id}\n"
+                f"- Chamado: {new_ticket.ticket_id}"
+            ),
+        )
+        return new_ticket
+    except Exception as exc:  # noqa
+        raise exc
+
+
+def send_discord_message(message: str, webhook_url: str) -> bool:
+    """
+    Envia uma mensagem para um canal do Discord através de um webhook.
+
+    Parâmetros:
+        message (str): Mensagem a ser enviada.
+        webhook_url (str): URL do webhook.
+
+    Retorno:
+        bool:
+            - Verdadeiro, caso a mensagem seja enviada com sucesso;
+            - Falso, caso contrário.
+    """
+    try:
+        data = {"content": message}
+        response = requests.post(webhook_url, json=data)
+        if response.status_code == 204:
+            return True
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Erro ao enviar mensagem para o Discord: {e}")
+        return False
 
 
 def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
