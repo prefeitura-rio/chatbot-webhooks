@@ -17,8 +17,10 @@ import requests
 
 from chatbot_webhooks.webhooks.utils import (
     get_ipp_info,
+    get_user_info,
     google_find_place,
     google_geolocator,
+    mask_email,
     validate_CPF,
     validate_email,
 )
@@ -265,6 +267,22 @@ def validador_email(request_data: dict) -> tuple[str, dict, list]:
     )
 
     return message, parameters, form_parameters_list
+
+
+def confirma_email(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+    cpf = parameters["usuario_cpf"]
+    email_dialogflow = str(parameters["usuario_email"]).strip()
+    user_info = get_user_info(cpf)
+    email_sgrc = str(user_info["email"]).strip()
+    if email_dialogflow == email_sgrc:
+        parameters["usuario_email_confirmado"] = True
+        parameters["usuario_email_cadastrado"] = None
+    else:
+        parameters["usuario_email_confirmado"] = False
+        parameters["usuario_email_cadastrado"] = mask_email(email_sgrc)
+    return message, parameters
 
 
 def definir_descricao_1647(request_data: dict) -> tuple[str, dict]:
