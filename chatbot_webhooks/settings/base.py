@@ -169,3 +169,8 @@ CHATBOT_INTEGRATIONS_KEY = getenv_or_action("CHATBOT_INTEGRATIONS_KEY", action="
 SGRC_URL = getenv_or_action("SGRC_URL", action="warn")
 SGRC_AUTHORIZATION_HEADER = getenv_or_action("SGRC_AUTHORIZATION_HEADER", action="warn")
 SGRC_BODY_TOKEN = getenv_or_action("SGRC_BODY_TOKEN", action="warn")
+
+# Discord
+DISCORD_WEBHOOK_NEW_TICKET = getenv_or_action(
+    "DISCORD_WEBHOOK_NEW_TICKET", action="warn"
+)
