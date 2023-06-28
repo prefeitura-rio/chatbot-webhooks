@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from django.conf import settings
 from google.cloud import dialogflowcx_v3 as dialogflow
@@ -40,7 +40,7 @@ def detect_intent_text(
     language_code: str = settings.DIALOGFLOW_LANGUAGE_CODE,
     session_client: dialogflow.SessionsClient = None,
     parameters: Dict[str, Any] = None,
-) -> str:
+) -> List[str]:
     if session_client is None:
         session_client = build_session_client(
             project_id=project_id,
@@ -70,4 +70,5 @@ def detect_intent_text(
     response_messages = [
         " ".join(msg.text.text) for msg in response.query_result.response_messages
     ]
-    return " ".join(response_messages)
+    ret_messages = [msg for msg in response_messages if msg.strip() != ""]
+    return ret_messages
