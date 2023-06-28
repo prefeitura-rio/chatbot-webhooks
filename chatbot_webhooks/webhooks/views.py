@@ -41,13 +41,16 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
         cpf: str = body["cpf"]
         email: str = body["email"]
         phone: str = body["phone"]
+        protocol: str = body["protocol"]
         session_id = ""
-        if phone:
-            session_id = phone
+        if protocol:
+            session_id = f"protocol-{protocol}"
+        elif phone:
+            session_id = f"phone-{phone}"
         elif cpf:
-            session_id = cpf
+            session_id = f"cpf-{cpf}"
         elif email:
-            session_id = email
+            session_id = f"email-{email}"
     except Exception:  # noqa
         logger.exception(f"Request {request_id} body does not contain user info")
         return HttpResponse(content="Malformed request", status=400)
