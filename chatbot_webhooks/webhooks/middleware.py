@@ -70,4 +70,5 @@ def detect_intent_text(
     response_messages = [
         " ".join(msg.text.text) for msg in response.query_result.response_messages
     ]
-    return response_messages
+    ret_messages = [msg for msg in response_messages if msg.strip() != ""]
+    return ret_messages
