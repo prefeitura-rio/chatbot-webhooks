@@ -48,6 +48,10 @@ DIALOGFLOW_LANGUAGE_CODE = getenv_or_action("DIALOGFLOW_LANGUAGE_CODE")
 # Google Maps API
 GMAPS_API_TOKEN = getenv_or_action("GMAPS_API_TOKEN")
 
+# Chatbot Integrations
+CHATBOT_INTEGRATIONS_URL = getenv_or_action("CHATBOT_INTEGRATIONS_URL")
+CHATBOT_INTEGRATIONS_KEY = getenv_or_action("CHATBOT_INTEGRATIONS_KEY")
+
 # ChatbotLab
 CHATBOT_LAB_API_URL = getenv_or_action("CHATBOT_LAB_API_URL")
 CHATBOT_LAB_API_KEY = getenv_or_action("CHATBOT_LAB_API_KEY")
@@ -56,3 +60,6 @@ CHATBOT_LAB_API_KEY = getenv_or_action("CHATBOT_LAB_API_KEY")
 SGRC_URL = getenv_or_action("SGRC_URL")
 SGRC_AUTHORIZATION_HEADER = getenv_or_action("SGRC_AUTHORIZATION_HEADER")
 SGRC_BODY_TOKEN = getenv_or_action("SGRC_BODY_TOKEN")
+
+# Discord
+DISCORD_WEBHOOK_NEW_TICKET = getenv_or_action("DISCORD_WEBHOOK_NEW_TICKET")

@@ -161,7 +161,16 @@ GMAPS_API_TOKEN = getenv_or_action("GMAPS_API_TOKEN", action="warn")
 CHATBOT_LAB_API_URL = getenv_or_action("CHATBOT_LAB_API_URL", action="warn")
 CHATBOT_LAB_API_KEY = getenv_or_action("CHATBOT_LAB_API_KEY", action="warn")
 
+# Chatbot Integrations
+CHATBOT_INTEGRATIONS_URL = getenv_or_action("CHATBOT_INTEGRATIONS_URL", action="warn")
+CHATBOT_INTEGRATIONS_KEY = getenv_or_action("CHATBOT_INTEGRATIONS_KEY", action="warn")
+
 # SGRC
 SGRC_URL = getenv_or_action("SGRC_URL", action="warn")
 SGRC_AUTHORIZATION_HEADER = getenv_or_action("SGRC_AUTHORIZATION_HEADER", action="warn")
 SGRC_BODY_TOKEN = getenv_or_action("SGRC_BODY_TOKEN", action="warn")
+
+# Discord
+DISCORD_WEBHOOK_NEW_TICKET = getenv_or_action(
+    "DISCORD_WEBHOOK_NEW_TICKET", action="warn"
+)

@@ -1,13 +1,21 @@
 # -*- coding: utf-8 -*-
 import base64
+from datetime import datetime
 import json
 import re
+from typing import Union
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from google.oauth2 import service_account
 import googlemaps
 from loguru import logger
+from prefeitura_rio.integrations.sgrc import (
+    new_ticket as sgrc_new_ticket,
+    Address,
+    NewTicket,
+    Requester,
+)
 import requests
 
 from chatbot_webhooks.webhooks.models import Token
@@ -16,6 +24,12 @@ from chatbot_webhooks.webhooks.models import Token
 def address_contains_street_number(address: str) -> bool:
     left_text = address.partition("Rio de Janeiro - RJ")[0]
     return bool(re.search(r"\d", left_text))
+
+
+def address_find_street_number(address: str) -> str:
+    left_text = address.partition("Rio de Janeiro - RJ")[0]
+    lista_numeros = re.findall(r"\d+", left_text)
+    return lista_numeros[-1]
 
 
 def authentication_required(view_func):
@@ -76,8 +90,46 @@ def get_ipp_info(parameters: dict) -> bool:
         return True
     except:  # noqa
         logger.info(data)
-        parameters["logradouro_nao_identificado"] = True
+        parameters["abertura_manual"] = True
         return False
+
+
+def get_user_info(cpf: str) -> dict:
+    """
+    Returns user info from CPF.
+
+    Args:
+        cpf (str): CPF to be searched.
+
+    Returns:
+        dict: User info in the following format:
+            {
+                "id": 12345678,
+                "name": "Fulano de Tal",
+                "cpf": "12345678911",
+                "email": "fulano@detal.com",
+                "phones": [
+                    "21999999999",
+                ],
+            }
+    """
+    url = settings.CHATBOT_INTEGRATIONS_URL
+    key = settings.CHATBOT_INTEGRATIONS_KEY
+    payload = {"cpf": cpf}
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    try:
+        response = requests.request(
+            "POST", url, headers=headers, data=json.dumps(payload)
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data
+    except Exception as exc:  # noqa
+        logger.error(exc)
+        raise Exception(f"Failed to get user info: {exc}") from exc
 
 
 def google_find_place(address: str, parameters: dict) -> bool:
@@ -106,11 +158,13 @@ def google_find_place(address: str, parameters: dict) -> bool:
             find_place_result["candidates"][0]["formatted_address"]
         ):
             logger.info("Contém número da rua")
+            parameters["logradouro_numero_identificado_google"] = True
             return google_geolocator(
                 find_place_result["candidates"][0]["formatted_address"], parameters
             )
         else:
             logger.info("Não contém número da rua")
+            parameters["logradouro_numero_identificado_google"] = False
             endereco_completo = f"{find_place_result['candidates'][0]['name']}, {find_place_result['candidates'][0]['formatted_address']}"  # noqa
             return google_geolocator(endereco_completo, parameters)
     else:
@@ -169,23 +223,151 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         "lng"
     ]
 
+    # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
+    # o geolocator não tenha conseguido retorná-lo, raspamos a string para achar esse número.
+    if "logradouro_numero_identificado_google" in parameters:
+        if (
+            parameters["logradouro_numero_identificado_google"]
+            and not parameters["logradouro_numero"]
+        ):
+            parameters["logradouro_numero"] = address_find_street_number(address)
+        parameters["logradouro_numero_identificado_google"] = None
+    else:
+        pass
+
+    # Fazer essa conversão usando try previne erros mais pra frente
+    try:
+        parameters["logradouro_numero"] = int(parameters["logradouro_numero"])
+    except:  # noqa
+        logger.info("logradouro_numero não é convertível para tipo inteiro.")
+
     return True
 
-def form_info_update(parameter_list: list, parameter_name: str, parameter_value: any) -> list:
+
+def form_info_update(
+    parameter_list: list, parameter_name: str, parameter_value: any
+) -> list:
     indice = -1
     for i in range(0, len(parameter_list)):
         if parameter_list[i]["displayName"] == parameter_name:
             indice = i
             break
     if indice == -1:
-        raise ValueError(f"Parameter {parameter_name} was not found in form parameter list")
-    parameter_list[indice]['value'] = parameter_value
+        raise ValueError(
+            f"Parameter {parameter_name} was not found in form parameter list"
+        )
+    parameter_list[indice]["value"] = parameter_value
 
     return parameter_list
 
-def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
 
-    """ Efetua a validação do CPF, tanto formatação quando dígito verificadores.
+def mask_email(email: str) -> str:
+    """
+    Mascara um e-mail para proteção do dado pessoal.
+
+    Exemplos:
+    >>> mask_email('admin@example.com')
+    'a****@e******.com'
+    >>> mask_email('fulanodetal@meuemail.com.br')
+    'f**********@m********.com.br'
+    """
+    email = email.split("@")
+    username = email[0]
+    domain = email[1]
+    username = username[0] + "*" * (len(username) - 2) + username[-1]
+    domain_parts = domain.split(".")
+    domain = ""
+    for i in range(0, len(domain_parts) - 1):
+        domain += domain_parts[i][0] + "*" * (len(domain_parts[i]) - 1) + "."
+    domain = domain + ".".join(domain_parts[len(domain_parts) - 1 :])  # noqa
+    return f"{username}@{domain}"
+
+
+def new_ticket(
+    classification_code: str,
+    description: str,
+    address: Address,
+    date_time: Union[datetime, str] = None,
+    requester: Requester = None,
+    occurrence_origin_code: str = "28",
+) -> NewTicket:
+    """
+    Creates a new ticket.
+
+    Args:
+        classification_code (str): The classification code.
+        description (str): The description of the occurrence.
+        address (Address): The address of the occurrence.
+        date_time (Union[datetime, str], optional): The date and time of the occurrence. When
+            converted to string, it must be in the following format: "%Y-%m-%dT%H:%M:%S". Defaults
+            to `None`, which will be replaced by the current date and time.
+        requester (Requester, optional): The requester information. Defaults to `None`, which will
+            be replaced by an empty `Requester` object.
+        occurrence_origin_code (str, optional): The occurrence origin code (e.g. "13" for
+            "Web App"). Defaults to "28".
+
+    Returns:
+        NewTicket: The new ticket.
+
+    Raises:
+        BaseSGRCException: If an unexpected exception occurs.
+        SGRCBusinessRuleException: If the request violates a business rule.
+        SGRCDuplicateTicketException: If the request tries to create a duplicate ticket.
+        SGRCEquivalentTicketException: If the request tries to create an equivalent ticket.
+        SGRCInternalErrorException: If the request causes an internal error.
+        SGRCInvalidBodyException: If the request body is invalid.
+        SGRCMalformedBodyException: If the request body is malformed.
+        ValueError: If any of the arguments is invalid.
+    """
+    try:
+        new_ticket: NewTicket = sgrc_new_ticket(
+            classification_code=classification_code,
+            description=description,
+            address=address,
+            date_time=date_time,
+            requester=requester,
+            occurrence_origin_code=occurrence_origin_code,
+        )
+        send_discord_message(
+            message=(
+                "Novo chamado criado:\n"
+                f"- Protocolo: {new_ticket.protocol_id}\n"
+                f"- Chamado: {new_ticket.ticket_id}"
+            ),
+            webhook_url=settings.DISCORD_WEBHOOK_NEW_TICKET,
+        )
+        return new_ticket
+    except Exception as exc:  # noqa
+        raise exc
+
+
+def send_discord_message(message: str, webhook_url: str) -> bool:
+    """
+    Envia uma mensagem para um canal do Discord através de um webhook.
+
+    Parâmetros:
+        message (str): Mensagem a ser enviada.
+        webhook_url (str): URL do webhook.
+
+    Retorno:
+        bool:
+            - Verdadeiro, caso a mensagem seja enviada com sucesso;
+            - Falso, caso contrário.
+    """
+    try:
+        data = {"content": message}
+        response = requests.post(webhook_url, json=data)
+        if response.status_code == 204:
+            return True
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"Erro ao enviar mensagem para o Discord: {e}")
+        return False
+
+
+def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
+    """Efetua a validação do CPF, tanto formatação quando dígito verificadores.
 
     Parâmetros:
         cpf (str): CPF a ser validado
@@ -217,31 +399,34 @@ def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
         return False
 
     # Validação do primeiro dígito verificador:
-    sum_of_products = sum(a*b for a, b in zip(numbers[0:9], range(10, 1, -1)))
+    sum_of_products = sum(a * b for a, b in zip(numbers[0:9], range(10, 1, -1)))
     expected_digit = (sum_of_products * 10 % 11) % 10
     if numbers[9] != expected_digit:
         return False
 
     # Validação do segundo dígito verificador:
-    sum_of_products = sum(a*b for a, b in zip(numbers[0:10], range(11, 1, -1)))
+    sum_of_products = sum(a * b for a, b in zip(numbers[0:10], range(11, 1, -1)))
     expected_digit = (sum_of_products * 10 % 11) % 10
     if numbers[10] != expected_digit:
         return False
 
     cpf_formatado = "".join([str(item) for item in numbers])
-    form_parameters_list = form_info_update(form_parameters_list, "usuario_cpf", cpf_formatado)
+    form_parameters_list = form_info_update(
+        form_parameters_list, "usuario_cpf", cpf_formatado
+    )
 
     return True
 
+
 def validate_email(parameters: dict, form_parameters_list: list) -> bool:
     """
-        Valida se a escrita do email está correta ou não,
-        i.e., se está conforme o padrão dos nomes de email e
-        do domínio.
-        Retorna, True: se estiver ok! E False: se não.
+    Valida se a escrita do email está correta ou não,
+    i.e., se está conforme o padrão dos nomes de email e
+    do domínio.
+    Retorna, True: se estiver ok! E False: se não.
 
-        Ex: validate_email("email@dominio")
+    Ex: validate_email("email@dominio")
     """
     email = parameters["usuario_email"]
-    regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+    regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return re.match(regex, email) is not None
