@@ -38,10 +38,18 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
 
     # Get user info from the request body
     try:
-        cpf: str = body["cpf"]
-        email: str = body["email"]
-        phone: str = body["phone"]
-        protocol: str = body["protocol"]
+        cpf = None
+        if "cpf" in body:
+            cpf: str = body["cpf"]
+        email = None
+        if "email" in body:
+            email: str = body["email"]
+        phone = None
+        if "phone" in body:
+            phone: str = body["phone"]
+        protocol = None
+        if "protocol" in body:
+            protocol: str = body["protocol"]
         session_id = ""
         if protocol:
             session_id = f"protocol-{protocol}"
