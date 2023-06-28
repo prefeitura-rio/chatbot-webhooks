@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from uuid import uuid4
 
 from django.http import HttpRequest, HttpResponse
@@ -61,14 +61,18 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
 
     # Get the answer from Dialogflow CX
     try:
-        answer: str = detect_intent_text(text=message, session_id=session_id)
-        logger.info(f"{request_id} - Answer: {answer}")
+        answer_messages: List[str] = detect_intent_text(
+            text=message, session_id=session_id
+        )
+        logger.info(f"{request_id} - Answers: {answer_messages}")
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
         return HttpResponse(content="An error occurred", status=500)
 
     # Return the answer
-    return HttpResponse(content=json.dumps({"answer": answer}), status=200)
+    return HttpResponse(
+        content=json.dumps({"answer_messages": answer_messages}), status=200
+    )
 
 
 @csrf_exempt
@@ -104,14 +108,18 @@ def input_telegram(request: HttpRequest) -> HttpResponse:
 
     # Get the answer from Dialogflow CX
     try:
-        answer: str = detect_intent_text(text=message, session_id=session_id)
+        answer_messages: List[str] = detect_intent_text(
+            text=message, session_id=session_id
+        )
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
         return HttpResponse(content="An error occurred", status=500)
 
     # Return the answer
-    logger.info(f"{request_id} - Answer: {answer}")
-    return HttpResponse(content=json.dumps({"answer": answer}), status=200)
+    logger.info(f"{request_id} - Answers: {answer_messages}")
+    return HttpResponse(
+        content=json.dumps({"answer_messages": answer_messages}), status=200
+    )
 
 
 @csrf_exempt
