@@ -89,18 +89,19 @@ def get_ipp_info(parameters: dict) -> bool:
         parameters["logradouro_nome_ipp"] = str(data["address"]["Match_addr"])
         parameters["logradouro_bairro_ipp"] = str(data["address"]["Neighborhood"])
 
-        logger.info(f'Codigo logradouro obtido: {parameters["logradouro_id_bairro_ipp"]}')
+        logger.info(
+            f'Codigo logradouro obtido: {parameters["logradouro_id_bairro_ipp"]}'
+        )
 
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
         if parameters["logradouro_id_bairro_ipp"] == "0":
-            url = "https://chatbot.integrations.dados.rio/neighborhood_id"
+            url = get_integrations_url("neighborhood_id")
 
             payload = json.dumps({"name": parameters["logradouro_bairro"]})
 
-
             key = settings.CHATBOT_INTEGRATIONS_KEY
-    
+
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {key}",
@@ -115,6 +116,21 @@ def get_ipp_info(parameters: dict) -> bool:
         logger.info(data)
         parameters["abertura_manual"] = True
         return False
+
+
+def get_integrations_url(endpoint: str) -> str:
+    """
+    Returns the URL of the endpoint in the integrations service.
+    """
+    base_url = settings.CHATBOT_INTEGRATIONS_URL
+    if base_url.endswith("/"):
+        base_url = base_url[:-1]
+    if endpoint.startswith("/"):
+        endpoint = endpoint[1:]
+    logger.info(f"Base URL: {base_url}")
+    logger.info(f"Endpoint: {endpoint}")
+    logger.info(f"URL: {base_url}/{endpoint}")
+    return f"{base_url}/{endpoint}"
 
 
 def get_user_info(cpf: str) -> dict:
@@ -136,7 +152,7 @@ def get_user_info(cpf: str) -> dict:
                 ],
             }
     """
-    url = settings.CHATBOT_INTEGRATIONS_URL
+    url = get_integrations_url("person")
     key = settings.CHATBOT_INTEGRATIONS_KEY
     payload = {"cpf": cpf}
     headers = {
