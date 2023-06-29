@@ -11,7 +11,7 @@ from prefeitura_rio.integrations.sgrc.exceptions import (
     SGRCEquivalentTicketException,
     SGRCDuplicateTicketException,
 )
-from prefeitura_rio.integrations.sgrc.models import Address, NewTicket, Requester
+from prefeitura_rio.integrations.sgrc.models import Address, NewTicket, Requester, Phones
 import requests
 
 from chatbot_webhooks.webhooks.utils import (
@@ -66,6 +66,8 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 if "usuario_email" in parameters
                 else "",
                 cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
+                name=parameters["usuario_nome_cadastrado"] if "usuario_nome_cadastrado" in parameters else "",
+                phones=Phones(parameters["usuario_telefone_cadastrado"]) if "usuario_telefone_cadastrado" in parameters else "",
             )
             address = Address(
                 street=parameters["logradouro_nome"]
@@ -285,12 +287,25 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
         parameters["usuario_email_cadastrado"] = None
         return message, parameters
     email_sgrc = str(user_info["email"]).strip()
+    nome_sgrc = str(user_info["name"]).strip()
+    if "phones" in user_info:
+        if user_info["phones"] != []:
+            telefone_sgrc = str(user_info["phones"][0]).strip()
+        else:
+            telefone_sgrc = ""
+    else:
+        telefone_sgrc = ""
+        
     if email_dialogflow == email_sgrc:
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
+        parameters["usuario_nome_cadastrado"] = nome_sgrc
+        parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     else:
         parameters["usuario_email_confirmado"] = False
         parameters["usuario_email_cadastrado"] = mask_email(email_sgrc)
+        parameters["usuario_nome_cadastrado"] = nome_sgrc
+        parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     return message, parameters
 
 
