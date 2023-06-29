@@ -288,7 +288,14 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
         return message, parameters
     email_sgrc = str(user_info["email"]).strip()
     nome_sgrc = str(user_info["name"]).strip()
-    telefone_sgrc = str(user_info["phones"][0]).strip()
+    if "phones" in user_info:
+        if user_info["phones"] != []:
+            telefone_sgrc = str(user_info["phones"][0]).strip()
+        else:
+            telefone_sgrc = ""
+    else:
+        telefone_sgrc = ""
+        
     if email_dialogflow == email_sgrc:
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
