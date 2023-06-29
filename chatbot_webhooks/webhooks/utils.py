@@ -87,6 +87,29 @@ def get_ipp_info(parameters: dict) -> bool:
         parameters["logradouro_id_ipp"] = str(data["address"]["CL"])
         parameters["logradouro_id_bairro_ipp"] = str(data["address"]["COD_Bairro"])
         parameters["logradouro_nome_ipp"] = str(data["address"]["Match_addr"])
+        parameters["logradouro_bairro_ipp"] = str(data["address"]["Neighborhood"])
+
+        logger.info(f'Codigo logradouro obtido: {parameters["logradouro_id_bairro_ipp"]}')
+
+        # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
+        # na base do IPP e pegando o codigo correspondente
+        if parameters["logradouro_id_bairro_ipp"] == "0":
+            url = "https://chatbot.integrations.dados.rio/neighborhood_id"
+
+            payload = json.dumps({"name": parameters["logradouro_bairro"]})
+
+
+            key = settings.CHATBOT_INTEGRATIONS_KEY
+    
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}",
+            }
+
+            response = requests.request("POST", url, headers=headers, data=payload)
+            parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
+            parameters["logradouro_bairro_ipp"] = response.json()["name"]
+
         return True
     except:  # noqa
         logger.info(data)

@@ -76,8 +76,8 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 street_code=parameters["logradouro_id_ipp"]
                 if "logradouro_id_ipp" in parameters
                 else "",  # logradouro_id_ipp
-                neighborhood=parameters["logradouro_bairro"]
-                if "logradouro_bairro" in parameters
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
                 else "",  # logradouro_bairro
                 neighborhood_code=parameters["logradouro_id_bairro_ipp"]
                 if "logradouro_id_bairro_ipp" in parameters
@@ -184,12 +184,14 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
         # Se existe numero, chama o geolocator
         if parameters["logradouro_numero"]:
             address_to_google = f"{parameters['logradouro_nome']['original']} {parameters['logradouro_numero']}, Rio de Janeiro - RJ"  # noqa
+            logger.info('Input geolocator: "{address_to_google}"')
             parameters["logradouro_indicador_validade"] = google_geolocator(
                 address_to_google, parameters
             )
         # Se não existe, é porque existe ao menos um ponto de referencia, então chama o find_place
         else:
             address_to_google = f"{parameters['logradouro_nome']['original']}, {parameters['logradouro_ponto_referencia']}, Rio de Janeiro - RJ"  # noqa
+            logger.info('Input find_place: "{address_to_google}"')
             parameters["logradouro_indicador_validade"] = google_find_place(
                 address_to_google, parameters
             )
@@ -286,6 +288,7 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
         return message, parameters
+    
     email_sgrc = str(user_info["email"]).strip()
     nome_sgrc = str(user_info["name"]).strip()
     if "phones" in user_info:
@@ -295,7 +298,7 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
             telefone_sgrc = ""
     else:
         telefone_sgrc = ""
-        
+
     if email_dialogflow == email_sgrc:
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
