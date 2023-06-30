@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from os import getenv
 
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
 from .base import *  # noqa
 from .base import getenv_or_action
 
@@ -25,6 +28,15 @@ DATABASES = {
         "PORT": getenv_or_action("DB_PORT"),
     }
 }
+
+# Sentry SDK
+SENTRY_DSN = getenv_or_action("SENTRY_DSN")
+sentry_sdk.init(
+    dsn=SENTRY_DSN,
+    integrations=[DjangoIntegration()],
+    traces_sample_rate=0.25,  # Rate of transactions to collect (1.0 = 100%)
+    send_default_pii=True,
+)
 
 # E-mail configuration
 ADMINS = get_admins()

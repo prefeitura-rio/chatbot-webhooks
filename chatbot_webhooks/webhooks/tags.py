@@ -11,7 +11,12 @@ from prefeitura_rio.integrations.sgrc.exceptions import (
     SGRCEquivalentTicketException,
     SGRCDuplicateTicketException,
 )
-from prefeitura_rio.integrations.sgrc.models import Address, NewTicket, Requester
+from prefeitura_rio.integrations.sgrc.models import (
+    Address,
+    NewTicket,
+    Requester,
+    Phones,
+)
 import requests
 
 from chatbot_webhooks.webhooks.utils import (
@@ -60,12 +65,25 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         # 1647 - Remoção de resíduos em logradouro
         if str(codigo_servico_1746) == "1647":
             # Build data models for opening a ticket
+
+            # Get the correct string in both cases, when it was collected by dialogflow 
+            # and when it comes from api
+            if "usuario_nome_cadastrado" in parameters:
+                if "original" in parameters["usuario_nome_cadastrado"]:
+                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]["original"]
+                else:
+                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]
+            else:
+                usuario_nome_cadastrado = ""
             requester = Requester(
-                # name="",
                 email=parameters["usuario_email"]
                 if "usuario_email" in parameters
                 else "",
                 cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
+                name=usuario_nome_cadastrado,
+                phones=Phones(parameters["usuario_telefone_cadastrado"])
+                if "usuario_telefone_cadastrado" in parameters
+                else "",
             )
             address = Address(
                 street=parameters["logradouro_nome"]
@@ -74,8 +92,8 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 street_code=parameters["logradouro_id_ipp"]
                 if "logradouro_id_ipp" in parameters
                 else "",  # logradouro_id_ipp
-                neighborhood=parameters["logradouro_bairro"]
-                if "logradouro_bairro" in parameters
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
                 else "",  # logradouro_bairro
                 neighborhood_code=parameters["logradouro_id_bairro_ipp"]
                 if "logradouro_id_bairro_ipp" in parameters
@@ -182,56 +200,17 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
         # Se existe numero, chama o geolocator
         if parameters["logradouro_numero"]:
             address_to_google = f"{parameters['logradouro_nome']['original']} {parameters['logradouro_numero']}, Rio de Janeiro - RJ"  # noqa
+            logger.info(f'Input geolocator: "{address_to_google}"')
             parameters["logradouro_indicador_validade"] = google_geolocator(
                 address_to_google, parameters
             )
         # Se não existe, é porque existe ao menos um ponto de referencia, então chama o find_place
         else:
             address_to_google = f"{parameters['logradouro_nome']['original']}, {parameters['logradouro_ponto_referencia']}, Rio de Janeiro - RJ"  # noqa
+            logger.info(f'Input find_place: "{address_to_google}"')
             parameters["logradouro_indicador_validade"] = google_find_place(
                 address_to_google, parameters
             )
-
-        parameters["logradouro_mensagem_confirmacao"] = ""
-        # parameters["logradouro_mensagem_confirmacao"] += f'Logradouro: {parameters["logradouro_nome"]["original"]} \n' if parameters["logradouro_ponto_referencia"] else f'Logradouro: {parameters["logradouro_nome"]} \n ' # noqa
-        parameters[
-            "logradouro_mensagem_confirmacao"
-        ] += f'Logradouro: {parameters["logradouro_nome"]} \n '
-        parameters["logradouro_mensagem_confirmacao"] += (
-            f'Número:  {parameters["logradouro_numero"]}\n'
-            if parameters["logradouro_numero"]
-            else ""
-        )
-        parameters["logradouro_mensagem_confirmacao"] += (
-            f'Ponto de referência informado:  {parameters["logradouro_ponto_referencia"]}\n'
-            if parameters["logradouro_ponto_referencia"]
-            else ""
-        )
-        parameters["logradouro_mensagem_confirmacao"] += (
-            f'Ponto de referência identificado:  {parameters["logradouro_ponto_referencia_identificado"]}\n'  # noqa
-            if parameters["logradouro_ponto_referencia_identificado"]
-            else ""
-        )
-        parameters["logradouro_mensagem_confirmacao"] += (
-            f'Bairro:  {parameters["logradouro_bairro"]}\n'
-            if "logradouro_bairro" in parameters
-            else ""
-        )
-        parameters["logradouro_mensagem_confirmacao"] += (
-            f'CEP:  {parameters["logradouro_cep"]}\n'
-            if "logradouro_cep" in parameters
-            else ""
-        )
-        parameters["logradouro_mensagem_confirmacao"] += (
-            f'Cidade:  {parameters["logradouro_cidade"]}, {parameters["logradouro_estado"]}\n'  # noqa
-            if "logradouro_cidade" in parameters
-            else ""
-        )
-        # parameters["logradouro_mensagem_confirmacao"] += (
-        #     f'Latitude, Longitude:  {parameters["logradouro_latitude"]}, {parameters["logradouro_longitude"]}'  # noqa
-        #     if "logradouro_latitude" in parameters
-        #     else ""
-        # )
 
     except:  # noqa
         parameters = request_data["sessionInfo"]["parameters"]
@@ -247,6 +226,47 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     message = ""
 
     get_ipp_info(parameters)
+
+    parameters["logradouro_mensagem_confirmacao"] = ""
+    # parameters["logradouro_mensagem_confirmacao"] += f'Logradouro: {parameters["logradouro_nome"]["original"]} \n' if parameters["logradouro_ponto_referencia"] else f'Logradouro: {parameters["logradouro_nome"]} \n ' # noqa
+    parameters[
+        "logradouro_mensagem_confirmacao"
+    ] += f'Logradouro: {parameters["logradouro_nome"]} \n '
+    parameters["logradouro_mensagem_confirmacao"] += (
+        f'Número:  {parameters["logradouro_numero"]}\n'
+        if parameters["logradouro_numero"]
+        else ""
+    )
+    parameters["logradouro_mensagem_confirmacao"] += (
+        f'Ponto de referência informado:  {parameters["logradouro_ponto_referencia"]}\n'
+        if parameters["logradouro_ponto_referencia"]
+        else ""
+    )
+    parameters["logradouro_mensagem_confirmacao"] += (
+        f'Ponto de referência identificado:  {parameters["logradouro_ponto_referencia_identificado"]}\n'  # noqa
+        if parameters["logradouro_ponto_referencia_identificado"]
+        else ""
+    )
+    parameters["logradouro_mensagem_confirmacao"] += (
+        f'Bairro:  {parameters["logradouro_bairro_ipp"]}\n'
+        if "logradouro_bairro_ipp" in parameters
+        else ""
+    )
+    parameters["logradouro_mensagem_confirmacao"] += (
+        f'CEP:  {parameters["logradouro_cep"]}\n'
+        if "logradouro_cep" in parameters
+        else ""
+    )
+    parameters["logradouro_mensagem_confirmacao"] += (
+        f'Cidade:  {parameters["logradouro_cidade"]}, {parameters["logradouro_estado"]}\n'  # noqa
+        if "logradouro_cidade" in parameters
+        else ""
+    )
+    # parameters["logradouro_mensagem_confirmacao"] += (
+    #     f'Latitude, Longitude:  {parameters["logradouro_latitude"]}, {parameters["logradouro_longitude"]}'  # noqa
+    #     if "logradouro_latitude" in parameters
+    #     else ""
+    # )
 
     return message, parameters
 
@@ -284,13 +304,27 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
         return message, parameters
+
     email_sgrc = str(user_info["email"]).strip()
+    nome_sgrc = str(user_info["name"]).strip()
+    if "phones" in user_info:
+        if user_info["phones"] != []:
+            telefone_sgrc = str(user_info["phones"][0]).strip()
+        else:
+            telefone_sgrc = ""
+    else:
+        telefone_sgrc = ""
+
     if email_dialogflow == email_sgrc:
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
+        parameters["usuario_nome_cadastrado"] = nome_sgrc
+        parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     else:
         parameters["usuario_email_confirmado"] = False
         parameters["usuario_email_cadastrado"] = mask_email(email_sgrc)
+        parameters["usuario_nome_cadastrado"] = nome_sgrc
+        parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     return message, parameters
 
 
