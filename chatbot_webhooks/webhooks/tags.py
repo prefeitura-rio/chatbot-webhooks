@@ -227,15 +227,19 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
 
     get_ipp_info(parameters)
 
+    # Formatando o logradouro_numero para o envio da mensagem ao cidadão
+    try:
+        logradouro_numero = int(parameters["logradouro_numero"])
+    except:  # noqa
+        logradouro_numero = parameters["logradouro_numero"] if "logradouro_numero" in parameters else ""
+        logger.info("logradouro_numero não é convertível para tipo inteiro.")
+
     parameters["logradouro_mensagem_confirmacao"] = ""
-    # parameters["logradouro_mensagem_confirmacao"] += f'Logradouro: {parameters["logradouro_nome"]["original"]} \n' if parameters["logradouro_ponto_referencia"] else f'Logradouro: {parameters["logradouro_nome"]} \n ' # noqa
     parameters[
         "logradouro_mensagem_confirmacao"
     ] += f'Logradouro: {parameters["logradouro_nome"]} \n '
     parameters["logradouro_mensagem_confirmacao"] += (
-        f'Número:  {parameters["logradouro_numero"]}\n'
-        if parameters["logradouro_numero"]
-        else ""
+        f'Número:  {logradouro_numero}\n'
     )
     parameters["logradouro_mensagem_confirmacao"] += (
         f'Ponto de referência informado:  {parameters["logradouro_ponto_referencia"]}\n'
