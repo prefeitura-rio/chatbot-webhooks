@@ -21,6 +21,11 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
     request_id = uuid4()
     logger.info(f"Request ID: {request_id}")
 
+    try:
+        logger.info(f"{request_id} - Request body: {request.body}")
+    except Exception:  # noqa
+        pass
+
     # Get the request body as JSON
     try:
         body: str = request.body.decode("utf-8")
@@ -94,6 +99,11 @@ def input_telegram(request: HttpRequest) -> HttpResponse:
     """
     request_id = uuid4()
     logger.info(f"Request ID: {request_id}")
+
+    try:
+        logger.info(f"{request_id} - Request body: {request.body}")
+    except Exception:  # noqa
+        pass
 
     # Get the request body as JSON
     try:
