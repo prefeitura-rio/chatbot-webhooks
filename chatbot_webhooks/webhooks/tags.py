@@ -65,15 +65,22 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         # 1647 - Remoção de resíduos em logradouro
         if str(codigo_servico_1746) == "1647":
             # Build data models for opening a ticket
+
+            # Get the correct string in both cases, when it was collected by dialogflow 
+            # and when it comes from api
+            if "usuario_nome_cadastrado" in parameters:
+                if "original" in parameters["usuario_nome_cadastrado"]:
+                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]["original"]
+                else:
+                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]
+            else:
+                usuario_nome_cadastrado = ""
             requester = Requester(
-                # name="",
                 email=parameters["usuario_email"]
                 if "usuario_email" in parameters
                 else "",
                 cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
-                name=parameters["usuario_nome_cadastrado"]
-                if "usuario_nome_cadastrado" in parameters
-                else "",
+                name=usuario_nome_cadastrado,
                 phones=Phones(parameters["usuario_telefone_cadastrado"])
                 if "usuario_telefone_cadastrado" in parameters
                 else "",

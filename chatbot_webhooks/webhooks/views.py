@@ -29,6 +29,7 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
     # Get the request body as JSON
     try:
         body: str = request.body.decode("utf-8")
+        body: str = body.replace("\n", " ")
         body: dict = json.loads(body)
     except Exception:  # noqa
         logger.error(f"Request {request_id} body is not valid JSON")
@@ -108,6 +109,7 @@ def input_telegram(request: HttpRequest) -> HttpResponse:
     # Get the request body as JSON
     try:
         body: str = request.body.decode("utf-8")
+        body: str = body.replace("\n", " ")
         body: dict = json.loads(body)
     except Exception:  # noqa
         logger.error(f"Request {request_id} body is not valid JSON")
