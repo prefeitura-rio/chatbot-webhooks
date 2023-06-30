@@ -243,7 +243,17 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         lng = geocode_result[0]["geometry"]["location"]["lng"]
         geocode_result = client.reverse_geocode((lat, lng))
 
-    for item in geocode_result[0]["address_components"]:
+    # Ache o primeiro resultado que possui o nome do logradouro
+    for resultado in geocode_result:
+        for item in resultado["address_components"]:
+            if [i for i in ACCEPTED_LOGRADOUROS if i in item["types"]]:
+                parameters["logradouro_nome"] = item["long_name"]
+                break
+
+    # Procure as outras informações nesse resultado que possui o nome do logradouro
+    for item in resultado["address_components"]:
+        logger.info(f'O item é {item["long_name"]}')
+        logger.info(item["types"])
         if "street_number" in item["types"]:
             parameters["logradouro_numero"] = item["long_name"]
         elif [i for i in ACCEPTED_LOGRADOUROS if i in item["types"]]:
@@ -276,7 +286,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
 
     # Fazer essa conversão usando try previne erros mais pra frente
     try:
-        parameters["logradouro_numero"] = int(parameters["logradouro_numero"])
+        parameters["logradouro_numero"] = round(int(parameters["logradouro_numero"]),0)
     except:  # noqa
         logger.info("logradouro_numero não é convertível para tipo inteiro.")
 
