@@ -34,7 +34,7 @@ SENTRY_DSN = getenv_or_action("SENTRY_DSN")
 sentry_sdk.init(
     dsn=SENTRY_DSN,
     integrations=[DjangoIntegration()],
-    traces_sample_rate=1.0,  # Rate of transactions to collect (1.0 = 100%)
+    traces_sample_rate=0.25,  # Rate of transactions to collect (1.0 = 100%)
     send_default_pii=True,
 )
 
