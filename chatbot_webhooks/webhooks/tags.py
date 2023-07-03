@@ -324,14 +324,14 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
 
     logger.info(f"E-mail do SGRC: {email_sgrc}")
     logger.info(f"E-mail informado pelo usuário: {email_dialogflow}")
-    if email_dialogflow == email_sgrc:
+    if (email_dialogflow == email_sgrc) or (not email_sgrc):
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
         parameters["usuario_nome_cadastrado"] = nome_sgrc
         parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     else:
         masked_email = mask_email(email_sgrc)
-        logger.info(f"-Email mascarado: {masked_email}")
+        logger.info(f"E-mail mascarado: {masked_email}")
         parameters["usuario_email_confirmado"] = False
         parameters["usuario_email_cadastrado"] = masked_email
         parameters["usuario_nome_cadastrado"] = nome_sgrc
