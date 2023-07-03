@@ -66,11 +66,13 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         if str(codigo_servico_1746) == "1647":
             # Build data models for opening a ticket
 
-            # Get the correct string in both cases, when it was collected by dialogflow 
+            # Get the correct string in both cases, when it was collected by dialogflow
             # and when it comes from api
             if "usuario_nome_cadastrado" in parameters:
                 if "original" in parameters["usuario_nome_cadastrado"]:
-                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]["original"]
+                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"][
+                        "original"
+                    ]
                 else:
                     usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]
             else:
@@ -231,16 +233,16 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     try:
         logradouro_numero = int(parameters["logradouro_numero"])
     except:  # noqa
-        logradouro_numero = parameters["logradouro_numero"] if "logradouro_numero" in parameters else ""
+        logradouro_numero = (
+            parameters["logradouro_numero"] if "logradouro_numero" in parameters else ""
+        )
         logger.info("logradouro_numero não é convertível para tipo inteiro.")
 
     parameters["logradouro_mensagem_confirmacao"] = ""
     parameters[
         "logradouro_mensagem_confirmacao"
     ] += f'Logradouro: {parameters["logradouro_nome"]} \n '
-    parameters["logradouro_mensagem_confirmacao"] += (
-        f'Número:  {logradouro_numero}\n'
-    )
+    parameters["logradouro_mensagem_confirmacao"] += f"Número:  {logradouro_numero}\n"
     parameters["logradouro_mensagem_confirmacao"] += (
         f'Ponto de referência informado:  {parameters["logradouro_ponto_referencia"]}\n'
         if parameters["logradouro_ponto_referencia"]
@@ -302,31 +304,36 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     cpf = parameters["usuario_cpf"]
     email_dialogflow = str(parameters["usuario_email"]).strip()
+    logger.info(f"Email informado pelo usuário: {email_dialogflow}")
     try:
+        logger.info(f"Buscando informações do usuário no SGRC com CPF {cpf}")
         user_info = get_user_info(cpf)
     except:  # noqa
+        logger.error(f"Erro ao buscar informações do usuário no SGRC com CPF {cpf}")
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
         return message, parameters
 
+    logger.info(f"Retorno do SGRC: {user_info}")
     email_sgrc = str(user_info["email"]).strip()
     nome_sgrc = str(user_info["name"]).strip()
-    if "phones" in user_info:
-        if user_info["phones"] != []:
-            telefone_sgrc = str(user_info["phones"][0]).strip()
-        else:
-            telefone_sgrc = ""
+    if "phones" in user_info and user_info["phones"]:
+        telefone_sgrc = str(user_info["phones"][0]).strip()
     else:
         telefone_sgrc = ""
 
+    logger.info(f"E-mail do SGRC: {email_sgrc}")
+    logger.info(f"E-mail informado pelo usuário: {email_dialogflow}")
     if email_dialogflow == email_sgrc:
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
         parameters["usuario_nome_cadastrado"] = nome_sgrc
         parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     else:
+        masked_email = mask_email(email_sgrc)
+        logger.info(f"-Email mascarado: {masked_email}")
         parameters["usuario_email_confirmado"] = False
-        parameters["usuario_email_cadastrado"] = mask_email(email_sgrc)
+        parameters["usuario_email_cadastrado"] = masked_email
         parameters["usuario_nome_cadastrado"] = nome_sgrc
         parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     return message, parameters
