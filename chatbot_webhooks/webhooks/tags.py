@@ -315,15 +315,19 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
         return message, parameters
 
     logger.info(f"Retorno do SGRC: {user_info}")
-    email_sgrc = str(user_info["email"]).strip()
-    nome_sgrc = str(user_info["name"]).strip()
+    email_sgrc = str(user_info["email"]).strip() if user_info["email"] else ""
+    nome_sgrc = str(user_info["name"]).strip() if user_info["name"] else ""
     if "phones" in user_info and user_info["phones"]:
-        telefone_sgrc = str(user_info["phones"][0]).strip()
+        telefone_sgrc = (
+            str(user_info["phones"][0]).strip() if user_info["phones"][0] else ""
+        )
     else:
         telefone_sgrc = ""
 
     logger.info(f"E-mail do SGRC: {email_sgrc}")
     logger.info(f"E-mail informado pelo usuário: {email_dialogflow}")
+    logger.info(f"E-mails são iguais? {email_dialogflow == email_sgrc}")
+    logger.info(f"E-mail do SGRC é vazio? {not email_sgrc}")
     if (email_dialogflow == email_sgrc) or (not email_sgrc):
         parameters["usuario_email_confirmado"] = True
         parameters["usuario_email_cadastrado"] = None
