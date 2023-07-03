@@ -244,13 +244,22 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         geocode_result = client.reverse_geocode((lat, lng))
 
     # Ache o primeiro resultado que possui o nome do logradouro
+    nome_logradouro_encontrado = False
+    logger.info("Procurando resultado do geocode com nome do logradouro")
     for resultado in geocode_result:
+        logger.info(resultado)
         for item in resultado["address_components"]:
             if [i for i in ACCEPTED_LOGRADOUROS if i in item["types"]]:
-                parameters["logradouro_nome"] = item["long_name"]
+                parameters["logradouro_nome"] = item["long_name"] 
+                nome_logradouro_encontrado = True
                 break
+        if nome_logradouro_encontrado:
+            break
+    logger.info("O item escolhido foi:")
+    logger.info(resultado["address_components"])
 
     # Procure as outras informações nesse resultado que possui o nome do logradouro
+    logger.info("Itens dentro desse resultado:")
     for item in resultado["address_components"]:
         logger.info(f'O item é {item["long_name"]}')
         logger.info(item["types"])
