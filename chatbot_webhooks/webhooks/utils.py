@@ -250,7 +250,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         logger.info(resultado)
         for item in resultado["address_components"]:
             if [i for i in ACCEPTED_LOGRADOUROS if i in item["types"]]:
-                parameters["logradouro_nome"] = item["long_name"] 
+                parameters["logradouro_nome"] = item["long_name"]
                 nome_logradouro_encontrado = True
                 break
         if nome_logradouro_encontrado:
@@ -295,7 +295,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
 
     # Fazer essa conversão usando try previne erros mais pra frente
     try:
-        parameters["logradouro_numero"] = round(int(parameters["logradouro_numero"]),0)
+        parameters["logradouro_numero"] = round(int(parameters["logradouro_numero"]), 0)
     except:  # noqa
         logger.info("logradouro_numero não é convertível para tipo inteiro.")
 
@@ -319,9 +319,13 @@ def form_info_update(
     return parameter_list
 
 
-def mask_email(email: str) -> str:
+def mask_email(email: str, mask_chacacter: str = "x") -> str:
     """
     Mascara um e-mail para proteção do dado pessoal.
+
+    Args:
+        email (str): E-mail a ser mascarado
+        mask_chacacter (str): Caracter a ser usado para mascarar o e-mail.
 
     Exemplos:
     >>> mask_email('admin@example.com')
@@ -332,11 +336,11 @@ def mask_email(email: str) -> str:
     email = email.split("@")
     username = email[0]
     domain = email[1]
-    username = username[0] + "*" * (len(username) - 2) + username[-1]
+    username = username[0] + mask_chacacter * (len(username) - 2) + username[-1]
     domain_parts = domain.split(".")
     domain = ""
     for i in range(0, len(domain_parts) - 1):
-        domain += domain_parts[i][0] + "*" * (len(domain_parts[i]) - 1) + "."
+        domain += domain_parts[i][0] + mask_chacacter * (len(domain_parts[i]) - 1) + "."
     domain = domain + ".".join(domain_parts[len(domain_parts) - 1 :])  # noqa
     return f"{username}@{domain}"
 
