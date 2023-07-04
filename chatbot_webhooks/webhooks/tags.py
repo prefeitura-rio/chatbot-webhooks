@@ -103,6 +103,9 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 number=parameters["logradouro_numero"]
                 if "logradouro_numero" in parameters and parameters["logradouro_numero"]
                 else "1",  # logradouro_numero
+                locality=parameters["logradouro_ponto_referencia_identificado"]
+                if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]
+                else "",
             )
             # Create new ticket
             try:
@@ -113,13 +116,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.info(requester)
                 logger.info("--------------------")
                 # Joins description with reference point
-                if "logradouro_ponto_referencia_identificado" in parameters:
-                    descricao_completa = (
-                        f'{parameters["remocao_residuo_descricao"]}. Ponto de '
-                        f'referência: {parameters["logradouro_ponto_referencia_identificado"]}'
-                    )
-                else:
-                    descricao_completa = parameters["remocao_residuo_descricao"]
+                descricao_completa = parameters["remocao_residuo_descricao"]
 
                 ticket: NewTicket = new_ticket(
                     classification_code=1647,
