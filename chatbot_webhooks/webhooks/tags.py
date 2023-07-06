@@ -77,6 +77,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                     usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]
             else:
                 usuario_nome_cadastrado = ""
+
             requester = Requester(
                 email=parameters["usuario_email"]
                 if "usuario_email" in parameters
@@ -87,6 +88,16 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 if "usuario_telefone_cadastrado" in parameters
                 else "",
             )
+
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]:
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif "logradouro_ponto_referencia" in parameters and parameters["logradouro_ponto_referencia"]:
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
             address = Address(
                 street=parameters["logradouro_nome"]
                 if "logradouro_nome" in parameters
@@ -103,9 +114,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 number=parameters["logradouro_numero"]
                 if "logradouro_numero" in parameters and parameters["logradouro_numero"]
                 else "1",  # logradouro_numero
-                locality=parameters["logradouro_ponto_referencia_identificado"]
-                if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]
-                else "",
+                locality=ponto_referencia,
             )
             # Create new ticket
             try:
