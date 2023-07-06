@@ -266,7 +266,7 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     )
     parameters["logradouro_mensagem_confirmacao"] += (
         f'CEP:  {parameters["logradouro_cep"]}\n'
-        if "logradouro_cep" in parameters
+        if "logradouro_cep" in parameters and parameters["logradouro_cep"]
         else ""
     )
     parameters["logradouro_mensagem_confirmacao"] += (
