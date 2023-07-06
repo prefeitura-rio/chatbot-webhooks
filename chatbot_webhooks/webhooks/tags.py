@@ -240,7 +240,7 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
         logradouro_numero = int(parameters["logradouro_numero"])
     except:  # noqa
         logradouro_numero = (
-            parameters["logradouro_numero"] if "logradouro_numero" in parameters and and parameters["logradouro_numero"] != "None" else ""
+            parameters["logradouro_numero"] if "logradouro_numero" in parameters and parameters["logradouro_numero"] != "None" else ""
         )
         logger.info("logradouro_numero não é convertível para tipo inteiro.")
 
