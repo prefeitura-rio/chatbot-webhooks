@@ -261,7 +261,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     # Procure as outras informações nesse resultado que possui o nome do logradouro
     logger.info("Itens dentro desse resultado:")
     for item in resultado["address_components"]:
-        logger.info(f'O item é {item["long_name"]}')
+        logger.info(f'O item é "{item["long_name"]}"')
         logger.info(item["types"])
         if "street_number" in item["types"]:
             parameters["logradouro_numero"] = item["long_name"]
@@ -280,6 +280,12 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     parameters["logradouro_longitude"] = geocode_result[0]["geometry"]["location"][
         "lng"
     ]
+
+    # Verifica se o endereço está fora do Rio de Janeiro, se for o caso, retorna endereço inválido 
+    # e Dialogflow vai avisar que só atendemos a cidade do Rio
+    if parameters["logradouro_cidade"] != "Rio de Janeiro":
+        parameters["logradouro_fora_do_rj"] = True
+        return False
 
     # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
     # o geolocator não tenha conseguido retorná-lo, raspamos a string para achar esse número.
