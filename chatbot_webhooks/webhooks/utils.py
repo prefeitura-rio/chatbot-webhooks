@@ -9,6 +9,7 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from google.oauth2 import service_account
 import googlemaps
+from jellyfish import jaro_similarity
 from loguru import logger
 from prefeitura_rio.integrations.sgrc import (
     new_ticket as sgrc_new_ticket,
@@ -20,6 +21,59 @@ import requests
 
 from chatbot_webhooks.webhooks.models import Token
 
+def get_ipp_street_code(parameters: dict) -> dict:
+    THRESHOLD = 0.8
+    logradouro_google = parameters["logradouro_nome"]
+    logradouro_ipp = parameters["logradouro_nome_ipp"]
+    logradouro_google_completo = f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
+
+    # Corte a string para considerar apenas o nome da rua
+    for i in range(0,len(logradouro_ipp)):
+        if logradouro_ipp[i] not in "0123456789 -":
+            logradouro_ipp = logradouro_ipp[i:]
+            break
+    
+    logger.info(f'Logradouro IPP: {logradouro_ipp}')
+    if jaro_similarity(logradouro_google, logradouro_ipp) > THRESHOLD:
+        logger.info(f"Similaridade alta o suficiente: {jaro_similarity(logradouro_google, logradouro_ipp)}")
+        return parameters
+    else:
+        logger.info(f"logradouro_nome retornado pelo Google significantemente diferente do retornado pelo IPP. Threshold: {jaro_similarity(logradouro_google, logradouro_ipp)}")
+        # Call IPP api
+        geocode_logradouro_ipp_url = str(
+            "https://pgeo3.rio.rj.gov.br/arcgis/rest/services/Geocode/Geocode_Logradouros_WGS84/GeocodeServer/findAddressCandidates?"
+            + f"Address={logradouro_google_completo}&Address2=&Address3=&Neighborhood=&City=&Subregion=&Region=&Postal=&PostalExt=&CountryCode=&SingleLine=&outFields=cl"
+            + "&maxLocations=&matchOutOfRange=true&langCode=&locationType=&sourceCountry=&category=&location=&searchExtent=&outSR=&magicKey=&preferredLabelValues=&f=pjson"
+        )
+
+        response = requests.request(
+            "GET",
+            geocode_logradouro_ipp_url,
+        )
+        data = response.json()
+        try:
+            candidates = list(data["candidates"])
+            logradouro_google_completo = f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
+            logradouro_codigo = None
+            logradouro_real = None
+            best_similarity = 0
+            for candidato in candidates:
+                similarity = jaro_similarity(candidato["address"], logradouro_google_completo)
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    logradouro_codigo = candidato["attributes"]["cl"]
+                    logradouro_real = candidato["address"]
+            
+            logger.info(f'Logradouro encontrado no Google, com bairro do IPP: {logradouro_google_completo}')
+            logger.info(f'Logradouro no IPP com maior semelhança: {logradouro_real}, cl: {logradouro_codigo}, semelhança: {best_similarity}')
+
+            parameters["logradouro_id_ipp"] = logradouro_codigo
+            parameters["logradouro_nome_ipp"] = logradouro_real.split(",")[0]
+            
+            return parameters
+        except:
+            logger.info("Correspondência não exata entre endereço no Google e no IPP")
+            return parameters
 
 def address_contains_street_number(address: str) -> bool:
     left_text = address.partition("Rio de Janeiro - RJ")[0]
@@ -86,11 +140,11 @@ def get_ipp_info(parameters: dict) -> bool:
     try:
         parameters["logradouro_id_ipp"] = str(data["address"]["CL"])
         parameters["logradouro_id_bairro_ipp"] = str(data["address"]["COD_Bairro"])
-        parameters["logradouro_nome_ipp"] = str(data["address"]["Match_addr"])
+        parameters["logradouro_nome_ipp"] = str(data["address"]["ShortLabel"])
         parameters["logradouro_bairro_ipp"] = str(data["address"]["Neighborhood"])
 
         logger.info(
-            f'Codigo logradouro obtido: {parameters["logradouro_id_bairro_ipp"]}'
+            f'Codigo bairro obtido: {parameters["logradouro_id_bairro_ipp"]}'
         )
 
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
@@ -110,6 +164,11 @@ def get_ipp_info(parameters: dict) -> bool:
             response = requests.request("POST", url, headers=headers, data=payload)
             parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
             parameters["logradouro_bairro_ipp"] = response.json()["name"]
+
+        # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
+        # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o 
+        # logradouro_id_ipp pelo correspondente ao novo logradouro mais similar ao do Google
+        parameters = get_ipp_street_code(parameters)
 
         return True
     except:  # noqa
