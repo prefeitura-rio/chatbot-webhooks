@@ -243,20 +243,26 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
             parameters["logradouro_numero"] if "logradouro_numero" in parameters and parameters["logradouro_numero"] != "None" else ""
         )
         logger.info("logradouro_numero não é convertível para tipo inteiro.")
+    
+    # Priorioza o ponto de referência identificado pelo Google
+    # mas considera o ponto de referência informado pelo usuário caso o Google não tenha identificado algum
+    if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]:
+        ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+    elif "logradouro_ponto_referencia" in parameters and parameters["logradouro_ponto_referencia"]:
+        ponto_referencia = parameters["logradouro_ponto_referencia"]
+    else:
+        ponto_referencia = ""
 
     parameters["logradouro_mensagem_confirmacao"] = ""
-    parameters[
-        "logradouro_mensagem_confirmacao"
-    ] += f'Logradouro: {parameters["logradouro_nome"]} \n '
-    parameters["logradouro_mensagem_confirmacao"] += f"Número:  {logradouro_numero}\n"
     parameters["logradouro_mensagem_confirmacao"] += (
-        f'Ponto de referência informado:  {parameters["logradouro_ponto_referencia"]}\n'
-        if parameters["logradouro_ponto_referencia"]
-        else ""
+        f'Logradouro: {parameters["logradouro_nome"]} \n '
     )
     parameters["logradouro_mensagem_confirmacao"] += (
-        f'Ponto de referência identificado:  {parameters["logradouro_ponto_referencia_identificado"]}\n'  # noqa
-        if parameters["logradouro_ponto_referencia_identificado"]
+        f"Número:  {logradouro_numero}\n"
+    )
+    parameters["logradouro_mensagem_confirmacao"] += (
+        f'Ponto de referência:  {ponto_referencia}\n'
+        if ponto_referencia != ""
         else ""
     )
     parameters["logradouro_mensagem_confirmacao"] += (

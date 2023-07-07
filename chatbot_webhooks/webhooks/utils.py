@@ -197,6 +197,7 @@ def google_find_place(address: str, parameters: dict) -> bool:
             find_place_result["candidates"][0]["formatted_address"]
         ):
             logger.info("Contém número da rua")
+            logger.info(f'Input geolocator: "{find_place_result["candidates"][0]["formatted_address"]}"')
             parameters["logradouro_numero_identificado_google"] = True
             return google_geolocator(
                 find_place_result["candidates"][0]["formatted_address"], parameters
@@ -205,6 +206,7 @@ def google_find_place(address: str, parameters: dict) -> bool:
             logger.info("Não contém número da rua")
             parameters["logradouro_numero_identificado_google"] = False
             endereco_completo = f"{find_place_result['candidates'][0]['name']}, {find_place_result['candidates'][0]['formatted_address']}"  # noqa
+            logger.info(f'Input geolocator: "{endereco_completo}"')
             return google_geolocator(endereco_completo, parameters)
     else:
         logger.warning("find_place NOT OK")
