@@ -207,6 +207,10 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
 
         # Se existe numero, chama o geolocator
         if parameters["logradouro_numero"]:
+            try:
+                parameters["logradouro_numero"] = int(parameters["logradouro_numero"])
+            except: # noqa
+                pass
             address_to_google = f"{parameters['logradouro_nome']['original']} {parameters['logradouro_numero']}, Rio de Janeiro - RJ"  # noqa
             logger.info(f'Input geolocator: "{address_to_google}"')
             parameters["logradouro_indicador_validade"] = google_geolocator(
