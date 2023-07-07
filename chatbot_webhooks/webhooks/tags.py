@@ -315,7 +315,7 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
     cpf = parameters["usuario_cpf"]
-    email_dialogflow = str(parameters["usuario_email"]).strip()
+    email_dialogflow = str(parameters["usuario_email"]).strip().lower()
     logger.info(f"Email informado pelo usuário: {email_dialogflow}")
     try:
         logger.info(f"Buscando informações do usuário no SGRC com CPF {cpf}")
@@ -327,7 +327,7 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
         return message, parameters
 
     logger.info(f"Retorno do SGRC: {user_info}")
-    email_sgrc = str(user_info["email"]).strip() if user_info["email"] else ""
+    email_sgrc = str(user_info["email"]).strip().lower() if user_info["email"] else ""
     nome_sgrc = str(user_info["name"]).strip() if user_info["name"] else ""
     if "phones" in user_info and user_info["phones"]:
         telefone_sgrc = (
