@@ -118,6 +118,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             )
             # Create new ticket
             try:
+                logger.info("Serviço: Remoção de Resíduo em Logradouro")
                 logger.info("Endereço")
                 logger.info(address)
                 logger.info("--------------------")
@@ -204,6 +205,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             )
             # Create new ticket
             try:
+                logger.info("Serviço: Poda de Árvore em Logradouro")
                 logger.info("Endereço")
                 logger.info(address)
                 logger.info("--------------------")
@@ -445,7 +447,7 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
     return message, parameters
 
 
-def definir_descricao_1647(request_data: dict) -> tuple[str, dict]:
+def definir_descricao(request_data: dict) -> tuple[str, dict]:
     # logger.info(request_data)
     parameters = request_data["sessionInfo"]["parameters"]
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
@@ -453,7 +455,14 @@ def definir_descricao_1647(request_data: dict) -> tuple[str, dict]:
     ultima_mensagem_usuario = request_data["text"]
 
     logger.info(f"Ultima mensagem: \n {ultima_mensagem_usuario}")
-    parameters["remocao_residuo_descricao"] = ultima_mensagem_usuario
+    
+    if parameters["codigo_servico_1746"] == "1647":
+        logger.info("Descrição de Remoção de Resíduo em Logradouro")
+        parameters["remocao_residuo_descricao"] = ultima_mensagem_usuario
+    elif parameters["codigo_servico_1746"] == "1614":
+        logger.info("Descrição de Poda de Árvore em Logradouro")
+        parameters["poda_arvore_descricao"] = ultima_mensagem_usuario
+    
     logger.info(parameters)
 
     return message, parameters
