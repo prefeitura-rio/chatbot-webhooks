@@ -62,33 +62,33 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         # Get classification code from Dialogflow
         codigo_servico_1746 = parameters["codigo_servico_1746"]
 
+        ### Build data models for opening a ticket ###
+
+        # Get the correct string in both cases, when it was collected by dialogflow
+        # and when it comes from api
+        if "usuario_nome_cadastrado" in parameters:
+            if "original" in parameters["usuario_nome_cadastrado"]:
+                usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"][
+                    "original"
+                ]
+            else:
+                usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]
+        else:
+            usuario_nome_cadastrado = ""
+
+        requester = Requester(
+            email=parameters["usuario_email"]
+            if "usuario_email" in parameters
+            else "",
+            cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
+            name=usuario_nome_cadastrado,
+            phones=Phones(parameters["usuario_telefone_cadastrado"])
+            if "usuario_telefone_cadastrado" in parameters
+            else "",
+        )
+
         # 1647 - Remoção de resíduos em logradouro
         if str(codigo_servico_1746) == "1647":
-            # Build data models for opening a ticket
-
-            # Get the correct string in both cases, when it was collected by dialogflow
-            # and when it comes from api
-            if "usuario_nome_cadastrado" in parameters:
-                if "original" in parameters["usuario_nome_cadastrado"]:
-                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"][
-                        "original"
-                    ]
-                else:
-                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]
-            else:
-                usuario_nome_cadastrado = ""
-
-            requester = Requester(
-                email=parameters["usuario_email"]
-                if "usuario_email" in parameters
-                else "",
-                cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
-                name=usuario_nome_cadastrado,
-                phones=Phones(parameters["usuario_telefone_cadastrado"])
-                if "usuario_telefone_cadastrado" in parameters
-                else "",
-            )
-
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
             if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]:
@@ -174,6 +174,8 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_interno"
             return message, parameters
+        elif str(codigo_servico_1746) == "1614":
+            #Aqui
         else:
             raise NotImplementedError("Classification code not implemented")
     except:  # noqa
