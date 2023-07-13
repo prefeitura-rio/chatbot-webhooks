@@ -126,7 +126,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.info(requester)
                 logger.info("--------------------")
                 # Joins description with reference point
-                descricao_completa = parameters["remocao_residuo_descricao"]
+                descricao_completa = parameters["servico_1746_descricao"]
 
                 ticket: NewTicket = new_ticket(
                     classification_code=1647,
@@ -213,7 +213,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.info(requester)
                 logger.info("--------------------")
                 # Joins description with reference point
-                descricao_completa = parameters["poda_arvore_descricao"]
+                descricao_completa = parameters["servico_1746_descricao"]
 
                 ticket: NewTicket = new_ticket(
                     classification_code=1614,
@@ -458,10 +458,10 @@ def definir_descricao(request_data: dict) -> tuple[str, dict]:
     
     if parameters["codigo_servico_1746"] == "1647":
         logger.info("Descrição de Remoção de Resíduo em Logradouro")
-        parameters["remocao_residuo_descricao"] = ultima_mensagem_usuario
+        parameters["servico_1746_descricao"] = ultima_mensagem_usuario
     elif parameters["codigo_servico_1746"] == "1614":
         logger.info("Descrição de Poda de Árvore em Logradouro")
-        parameters["poda_arvore_descricao"] = ultima_mensagem_usuario
+        parameters["servico_1746_descricao"] = ultima_mensagem_usuario
     
     logger.info(parameters)
 
