@@ -62,33 +62,33 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         # Get classification code from Dialogflow
         codigo_servico_1746 = parameters["codigo_servico_1746"]
 
+        ### Build data models for opening a ticket ###
+
+        # Get the correct string in both cases, when it was collected by dialogflow
+        # and when it comes from api
+        if "usuario_nome_cadastrado" in parameters:
+            if "original" in parameters["usuario_nome_cadastrado"]:
+                usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"][
+                    "original"
+                ]
+            else:
+                usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]
+        else:
+            usuario_nome_cadastrado = ""
+
+        requester = Requester(
+            email=parameters["usuario_email"]
+            if "usuario_email" in parameters
+            else "",
+            cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
+            name=usuario_nome_cadastrado,
+            phones=Phones(parameters["usuario_telefone_cadastrado"])
+            if "usuario_telefone_cadastrado" in parameters
+            else "",
+        )
+
         # 1647 - Remoção de resíduos em logradouro
         if str(codigo_servico_1746) == "1647":
-            # Build data models for opening a ticket
-
-            # Get the correct string in both cases, when it was collected by dialogflow
-            # and when it comes from api
-            if "usuario_nome_cadastrado" in parameters:
-                if "original" in parameters["usuario_nome_cadastrado"]:
-                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"][
-                        "original"
-                    ]
-                else:
-                    usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]
-            else:
-                usuario_nome_cadastrado = ""
-
-            requester = Requester(
-                email=parameters["usuario_email"]
-                if "usuario_email" in parameters
-                else "",
-                cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
-                name=usuario_nome_cadastrado,
-                phones=Phones(parameters["usuario_telefone_cadastrado"])
-                if "usuario_telefone_cadastrado" in parameters
-                else "",
-            )
-
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
             if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]:
@@ -118,6 +118,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             )
             # Create new ticket
             try:
+                logger.info("Serviço: Remoção de Resíduo em Logradouro")
                 logger.info("Endereço")
                 logger.info(address)
                 logger.info("--------------------")
@@ -125,10 +126,97 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.info(requester)
                 logger.info("--------------------")
                 # Joins description with reference point
-                descricao_completa = parameters["remocao_residuo_descricao"]
+                descricao_completa = parameters["servico_1746_descricao"]
 
                 ticket: NewTicket = new_ticket(
                     classification_code=1647,
+                    description=descricao_completa,
+                    address=address,
+                    requester=requester,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
+        elif str(codigo_servico_1746) == "1614":
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]:
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif "logradouro_ponto_referencia" in parameters and parameters["logradouro_ponto_referencia"]:
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=parameters["logradouro_numero"]
+                if "logradouro_numero" in parameters and parameters["logradouro_numero"]
+                else "1",  # logradouro_numero
+                locality=ponto_referencia,
+            )
+            # Create new ticket
+            try:
+                logger.info("Serviço: Poda de Árvore em Logradouro")
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("--------------------")
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                # Joins description with reference point
+                descricao_completa = parameters["servico_1746_descricao"]
+
+                ticket: NewTicket = new_ticket(
+                    classification_code=1614,
                     description=descricao_completa,
                     address=address,
                     requester=requester,
@@ -359,7 +447,7 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
     return message, parameters
 
 
-def definir_descricao_1647(request_data: dict) -> tuple[str, dict]:
+def definir_descricao(request_data: dict) -> tuple[str, dict]:
     # logger.info(request_data)
     parameters = request_data["sessionInfo"]["parameters"]
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
@@ -367,7 +455,14 @@ def definir_descricao_1647(request_data: dict) -> tuple[str, dict]:
     ultima_mensagem_usuario = request_data["text"]
 
     logger.info(f"Ultima mensagem: \n {ultima_mensagem_usuario}")
-    parameters["remocao_residuo_descricao"] = ultima_mensagem_usuario
+    
+    if parameters["codigo_servico_1746"] == "1647":
+        logger.info("Descrição de Remoção de Resíduo em Logradouro")
+        parameters["servico_1746_descricao"] = ultima_mensagem_usuario
+    elif parameters["codigo_servico_1746"] == "1614":
+        logger.info("Descrição de Poda de Árvore em Logradouro")
+        parameters["servico_1746_descricao"] = ultima_mensagem_usuario
+    
     logger.info(parameters)
 
     return message, parameters
