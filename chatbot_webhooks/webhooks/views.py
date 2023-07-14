@@ -84,7 +84,7 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
         logger.info(f"{request_id} - Answers: {answer_messages}")
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
-        return HttpResponse(content="An error occurred", status=500)
+        raise exc
 
     # Return the answer
     return HttpResponse(
@@ -136,7 +136,7 @@ def input_telegram(request: HttpRequest) -> HttpResponse:
         )
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
-        return HttpResponse(content="An error occurred", status=500)
+        raise exc
 
     # Return the answer
     logger.info(f"{request_id} - Answers: {answer_messages}")
@@ -181,7 +181,7 @@ def webhook(request: HttpRequest) -> HttpResponse:
         response: Union[str, Tuple[str, Dict[str, Any]]] = webhook_func(body)
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
-        return HttpResponse(content="An error occurred", status=500)
+        raise exc
 
     logger.info(f"{request_id} - Webhook response: {response}")
     if isinstance(response, str):
