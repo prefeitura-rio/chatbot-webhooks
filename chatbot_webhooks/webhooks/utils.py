@@ -362,7 +362,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
 
     # Fazer essa conversão usando try previne erros mais pra frente
     try:
-        parameters["logradouro_numero"] = round(int(parameters["logradouro_numero"]), 0)
+        parameters["logradouro_numero"] = int(parameters["logradouro_numero"])
     except:  # noqa
         logger.info("logradouro_numero não é convertível para tipo inteiro.")
 
