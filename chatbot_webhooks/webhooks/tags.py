@@ -85,6 +85,15 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             else "",
         )
 
+        # Get street number from Dialogflow, defaults to 1
+        street_number = (
+            parameters["logradouro_numero"]
+            if "logradouro_numero" in parameters and parameters["logradouro_numero"]
+            else "1"
+        )
+        # Extract number from string
+        street_number = "".join(filter(str.isdigit, street_number))
+
         # 1647 - Remoção de resíduos em logradouro
         if str(codigo_servico_1746) == "1647":
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
@@ -117,9 +126,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 neighborhood_code=parameters["logradouro_id_bairro_ipp"]
                 if "logradouro_id_bairro_ipp" in parameters
                 else "",  # logradouro_id_bairro_ipp
-                number=parameters["logradouro_numero"]
-                if "logradouro_numero" in parameters and parameters["logradouro_numero"]
-                else "1",  # logradouro_numero
+                number=street_number,
                 locality=ponto_referencia,
                 zip_code=parameters["logradouro_cep"]
                 if "logradouro_cep" in parameters and parameters["logradouro_cep"]
@@ -216,9 +223,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 neighborhood_code=parameters["logradouro_id_bairro_ipp"]
                 if "logradouro_id_bairro_ipp" in parameters
                 else "",  # logradouro_id_bairro_ipp
-                number=parameters["logradouro_numero"]
-                if "logradouro_numero" in parameters and parameters["logradouro_numero"]
-                else "1",  # logradouro_numero
+                number=street_number,
                 locality=ponto_referencia,
                 zip_code=parameters["logradouro_cep"]
                 if "logradouro_cep" in parameters and parameters["logradouro_cep"]
