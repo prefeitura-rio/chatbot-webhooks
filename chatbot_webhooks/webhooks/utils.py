@@ -21,24 +21,31 @@ import requests
 
 from chatbot_webhooks.webhooks.models import Token
 
+
 def get_ipp_street_code(parameters: dict) -> dict:
     THRESHOLD = 0.8
     logradouro_google = parameters["logradouro_nome"]
     logradouro_ipp = parameters["logradouro_nome_ipp"]
-    logradouro_google_completo = f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
+    logradouro_google_completo = (
+        f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
+    )
 
     # Corte a string para considerar apenas o nome da rua
-    for i in range(0,len(logradouro_ipp)):
+    for i in range(0, len(logradouro_ipp)):
         if logradouro_ipp[i] not in "0123456789 -":
             logradouro_ipp = logradouro_ipp[i:]
             break
-    
-    logger.info(f'Logradouro IPP: {logradouro_ipp}')
+
+    logger.info(f"Logradouro IPP: {logradouro_ipp}")
     if jaro_similarity(logradouro_google, logradouro_ipp) > THRESHOLD:
-        logger.info(f"Similaridade alta o suficiente: {jaro_similarity(logradouro_google, logradouro_ipp)}")
+        logger.info(
+            f"Similaridade alta o suficiente: {jaro_similarity(logradouro_google, logradouro_ipp)}"
+        )
         return parameters
     else:
-        logger.info(f"logradouro_nome retornado pelo Google significantemente diferente do retornado pelo IPP. Threshold: {jaro_similarity(logradouro_google, logradouro_ipp)}")
+        logger.info(
+            f"logradouro_nome retornado pelo Google significantemente diferente do retornado pelo IPP. Threshold: {jaro_similarity(logradouro_google, logradouro_ipp)}"
+        )
         # Call IPP api
         geocode_logradouro_ipp_url = str(
             "https://pgeo3.rio.rj.gov.br/arcgis/rest/services/Geocode/Geocode_Logradouros_WGS84/GeocodeServer/findAddressCandidates?"
@@ -53,27 +60,36 @@ def get_ipp_street_code(parameters: dict) -> dict:
         data = response.json()
         try:
             candidates = list(data["candidates"])
-            logradouro_google_completo = f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
+            logradouro_google_completo = (
+                f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
+            )
             logradouro_codigo = None
             logradouro_real = None
             best_similarity = 0
             for candidato in candidates:
-                similarity = jaro_similarity(candidato["address"], logradouro_google_completo)
+                similarity = jaro_similarity(
+                    candidato["address"], logradouro_google_completo
+                )
                 if similarity > best_similarity:
                     best_similarity = similarity
                     logradouro_codigo = candidato["attributes"]["cl"]
                     logradouro_real = candidato["address"]
-            
-            logger.info(f'Logradouro encontrado no Google, com bairro do IPP: {logradouro_google_completo}')
-            logger.info(f'Logradouro no IPP com maior semelhança: {logradouro_real}, cl: {logradouro_codigo}, semelhança: {best_similarity}')
+
+            logger.info(
+                f"Logradouro encontrado no Google, com bairro do IPP: {logradouro_google_completo}"
+            )
+            logger.info(
+                f"Logradouro no IPP com maior semelhança: {logradouro_real}, cl: {logradouro_codigo}, semelhança: {best_similarity}"
+            )
 
             parameters["logradouro_id_ipp"] = logradouro_codigo
             parameters["logradouro_nome_ipp"] = logradouro_real.split(",")[0]
-            
+
             return parameters
         except:
             logger.info("Correspondência não exata entre endereço no Google e no IPP")
             return parameters
+
 
 def address_contains_street_number(address: str) -> bool:
     left_text = address.partition("Rio de Janeiro - RJ")[0]
@@ -143,9 +159,7 @@ def get_ipp_info(parameters: dict) -> bool:
         parameters["logradouro_nome_ipp"] = str(data["address"]["ShortLabel"])
         parameters["logradouro_bairro_ipp"] = str(data["address"]["Neighborhood"])
 
-        logger.info(
-            f'Codigo bairro obtido: {parameters["logradouro_id_bairro_ipp"]}'
-        )
+        logger.info(f'Codigo bairro obtido: {parameters["logradouro_id_bairro_ipp"]}')
 
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
@@ -166,7 +180,7 @@ def get_ipp_info(parameters: dict) -> bool:
             parameters["logradouro_bairro_ipp"] = response.json()["name"]
 
         # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
-        # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o 
+        # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o
         # logradouro_id_ipp pelo correspondente ao novo logradouro mais similar ao do Google
         parameters = get_ipp_street_code(parameters)
 
@@ -256,7 +270,9 @@ def google_find_place(address: str, parameters: dict) -> bool:
             find_place_result["candidates"][0]["formatted_address"]
         ):
             logger.info("Contém número da rua")
-            logger.info(f'Input geolocator: "{find_place_result["candidates"][0]["formatted_address"]}"')
+            logger.info(
+                f'Input geolocator: "{find_place_result["candidates"][0]["formatted_address"]}"'
+            )
             parameters["logradouro_numero_identificado_google"] = True
             return google_geolocator(
                 find_place_result["candidates"][0]["formatted_address"], parameters
@@ -337,12 +353,18 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         elif "administrative_area_level_1" in item["types"]:
             parameters["logradouro_estado"] = item["short_name"]
 
+    # If we don't find neither the number nor the zip code, we can't proceed
+    number = parameters.get("logradouro_numero", None)
+    zip_code = parameters.get("logradouro_cep", None)
+    if not number and not zip_code:
+        return False
+
     parameters["logradouro_latitude"] = geocode_result[0]["geometry"]["location"]["lat"]
     parameters["logradouro_longitude"] = geocode_result[0]["geometry"]["location"][
         "lng"
     ]
 
-    # Verifica se o endereço está fora do Rio de Janeiro, se for o caso, retorna endereço inválido 
+    # Verifica se o endereço está fora do Rio de Janeiro, se for o caso, retorna endereço inválido
     # e Dialogflow vai avisar que só atendemos a cidade do Rio
     if parameters["logradouro_cidade"] != "Rio de Janeiro":
         parameters["logradouro_fora_do_rj"] = True
