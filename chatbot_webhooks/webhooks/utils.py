@@ -337,16 +337,20 @@ def google_geolocator(address: str, parameters: dict) -> bool:
 
     # Procure as outras informações nesse resultado que possui o nome do logradouro
     logger.info("Itens dentro desse resultado:")
+    google_found_number = False
+    google_found_zip_code = False
     for item in resultado["address_components"]:
         logger.info(f'O item é "{item["long_name"]}"')
         logger.info(item["types"])
         if "street_number" in item["types"]:
+            google_found_number = True
             parameters["logradouro_numero"] = item["long_name"]
         elif [i for i in ACCEPTED_LOGRADOUROS if i in item["types"]]:
             parameters["logradouro_nome"] = item["long_name"]
         elif "sublocality" in item["types"] or "sublocality_level_1" in item["types"]:
             parameters["logradouro_bairro"] = item["long_name"]
         elif "postal_code" in item["types"]:
+            google_found_zip_code = True
             parameters["logradouro_cep"] = item["long_name"]
         elif "administrative_area_level_2" in item["types"]:
             parameters["logradouro_cidade"] = item["long_name"]
@@ -354,9 +358,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
             parameters["logradouro_estado"] = item["short_name"]
 
     # If we don't find neither the number nor the zip code, we can't proceed
-    number = parameters.get("logradouro_numero", None)
-    zip_code = parameters.get("logradouro_cep", None)
-    if not number and not zip_code:
+    if not google_found_number and not google_found_zip_code:
         return False
 
     parameters["logradouro_latitude"] = geocode_result[0]["geometry"]["location"]["lat"]
