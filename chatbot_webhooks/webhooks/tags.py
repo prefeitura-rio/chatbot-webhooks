@@ -62,7 +62,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         # Get classification code from Dialogflow
         codigo_servico_1746 = parameters["codigo_servico_1746"]
 
-        ### Build data models for opening a ticket ###
+        # Build data models for opening a ticket ###
 
         # Get the correct string in both cases, when it was collected by dialogflow
         # and when it comes from api
@@ -77,9 +77,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             usuario_nome_cadastrado = ""
 
         requester = Requester(
-            email=parameters["usuario_email"]
-            if "usuario_email" in parameters
-            else "",
+            email=parameters["usuario_email"] if "usuario_email" in parameters else "",
             cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
             name=usuario_nome_cadastrado,
             phones=Phones(parameters["usuario_telefone_cadastrado"])
@@ -91,9 +89,17 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         if str(codigo_servico_1746) == "1647":
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
-            if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]:
-                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
-            elif "logradouro_ponto_referencia" in parameters and parameters["logradouro_ponto_referencia"]:
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters[
+                    "logradouro_ponto_referencia_identificado"
+                ]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
                 ponto_referencia = parameters["logradouro_ponto_referencia"]
             else:
                 ponto_referencia = ""
@@ -115,6 +121,9 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 if "logradouro_numero" in parameters and parameters["logradouro_numero"]
                 else "1",  # logradouro_numero
                 locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
             )
             # Create new ticket
             try:
@@ -179,9 +188,17 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         elif str(codigo_servico_1746) == "1614":
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
-            if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]:
-                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
-            elif "logradouro_ponto_referencia" in parameters and parameters["logradouro_ponto_referencia"]:
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters[
+                    "logradouro_ponto_referencia_identificado"
+                ]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
                 ponto_referencia = parameters["logradouro_ponto_referencia"]
             else:
                 ponto_referencia = ""
@@ -203,6 +220,9 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 if "logradouro_numero" in parameters and parameters["logradouro_numero"]
                 else "1",  # logradouro_numero
                 locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
             )
             # Create new ticket
             try:
@@ -298,7 +318,7 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
         if parameters["logradouro_numero"]:
             try:
                 parameters["logradouro_numero"] = int(parameters["logradouro_numero"])
-            except: # noqa
+            except:  # noqa
                 pass
             address_to_google = f"{parameters['logradouro_nome']['original']} {parameters['logradouro_numero']}, Rio de Janeiro - RJ"  # noqa
             logger.info(f'Input geolocator: "{address_to_google}"')
@@ -333,30 +353,35 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
         logradouro_numero = int(parameters["logradouro_numero"])
     except:  # noqa
         logradouro_numero = (
-            parameters["logradouro_numero"] if "logradouro_numero" in parameters and parameters["logradouro_numero"] != "None" else ""
+            parameters["logradouro_numero"]
+            if "logradouro_numero" in parameters
+            and parameters["logradouro_numero"] != "None"
+            else ""
         )
         logger.info("logradouro_numero não é convertível para tipo inteiro.")
-    
+
     # Priorioza o ponto de referência identificado pelo Google
     # mas considera o ponto de referência informado pelo usuário caso o Google não tenha identificado algum
-    if "logradouro_ponto_referencia_identificado" in parameters and parameters["logradouro_ponto_referencia_identificado"]:
+    if (
+        "logradouro_ponto_referencia_identificado" in parameters
+        and parameters["logradouro_ponto_referencia_identificado"]
+    ):
         ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
-    elif "logradouro_ponto_referencia" in parameters and parameters["logradouro_ponto_referencia"]:
+    elif (
+        "logradouro_ponto_referencia" in parameters
+        and parameters["logradouro_ponto_referencia"]
+    ):
         ponto_referencia = parameters["logradouro_ponto_referencia"]
     else:
         ponto_referencia = ""
 
     parameters["logradouro_mensagem_confirmacao"] = ""
+    parameters[
+        "logradouro_mensagem_confirmacao"
+    ] += f'Logradouro: {parameters["logradouro_nome"]} \n '
+    parameters["logradouro_mensagem_confirmacao"] += f"Número:  {logradouro_numero}\n"
     parameters["logradouro_mensagem_confirmacao"] += (
-        f'Logradouro: {parameters["logradouro_nome"]} \n '
-    )
-    parameters["logradouro_mensagem_confirmacao"] += (
-        f"Número:  {logradouro_numero}\n"
-    )
-    parameters["logradouro_mensagem_confirmacao"] += (
-        f'Ponto de referência:  {ponto_referencia}\n'
-        if ponto_referencia != ""
-        else ""
+        f"Ponto de referência:  {ponto_referencia}\n" if ponto_referencia != "" else ""
     )
     parameters["logradouro_mensagem_confirmacao"] += (
         f'Bairro:  {parameters["logradouro_bairro_ipp"]}\n'
@@ -365,7 +390,9 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     )
     parameters["logradouro_mensagem_confirmacao"] += (
         f'CEP:  {parameters["logradouro_cep"]}\n'
-        if "logradouro_cep" in parameters and parameters["logradouro_cep"] and parameters["logradouro_cep"] != "None"
+        if "logradouro_cep" in parameters
+        and parameters["logradouro_cep"]
+        and parameters["logradouro_cep"] != "None"
         else ""
     )
     parameters["logradouro_mensagem_confirmacao"] += (
@@ -456,14 +483,14 @@ def definir_descricao(request_data: dict) -> tuple[str, dict]:
     ultima_mensagem_usuario = request_data["text"]
 
     logger.info(f"Ultima mensagem: \n {ultima_mensagem_usuario}")
-    
+
     if parameters["codigo_servico_1746"] == "1647":
         logger.info("Descrição de Remoção de Resíduo em Logradouro")
         parameters["servico_1746_descricao"] = ultima_mensagem_usuario
     elif parameters["codigo_servico_1746"] == "1614":
         logger.info("Descrição de Poda de Árvore em Logradouro")
         parameters["servico_1746_descricao"] = ultima_mensagem_usuario
-    
+
     logger.info(parameters)
 
     return message, parameters
