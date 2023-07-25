@@ -84,7 +84,6 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             if "usuario_telefone_cadastrado" in parameters
             else "",
         )
-
         # Get street number from Dialogflow, defaults to 1
         street_number = (
             parameters["logradouro_numero"]
@@ -93,7 +92,6 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         )
         # Extract number from string
         street_number = "".join(filter(str.isdigit, street_number))
-
         # 1647 - Remoção de resíduos em logradouro
         if str(codigo_servico_1746) == "1647":
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
@@ -322,7 +320,7 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
         # Se existe numero, chama o geolocator
         if parameters["logradouro_numero"]:
             try:
-                parameters["logradouro_numero"] = int(parameters["logradouro_numero"])
+                parameters["logradouro_numero"] = str(parameters["logradouro_numero"]).split(".")[0]
             except:  # noqa
                 pass
             address_to_google = f"{parameters['logradouro_nome']['original']} {parameters['logradouro_numero']}, Rio de Janeiro - RJ"  # noqa
@@ -355,7 +353,7 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
 
     # Formatando o logradouro_numero para o envio da mensagem ao cidadão
     try:
-        logradouro_numero = int(parameters["logradouro_numero"])
+        logradouro_numero = str(parameters["logradouro_numero"]).split(".")[0]
     except:  # noqa
         logradouro_numero = (
             parameters["logradouro_numero"]
@@ -363,7 +361,7 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
             and parameters["logradouro_numero"] != "None"
             else ""
         )
-        logger.info("logradouro_numero não é convertível para tipo inteiro.")
+        logger.info("logradouro_numero: falhou ao tentar pegar a parcela antes do `.`")
 
     # Priorioza o ponto de referência identificado pelo Google
     # mas considera o ponto de referência informado pelo usuário caso o Google não tenha identificado algum
@@ -383,7 +381,7 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     parameters["logradouro_mensagem_confirmacao"] = ""
     parameters[
         "logradouro_mensagem_confirmacao"
-    ] += f'Logradouro: {parameters["logradouro_nome"]} \n '
+    ] += f'Logradouro: {parameters["logradouro_nome"]} \n'
     parameters["logradouro_mensagem_confirmacao"] += f"Número:  {logradouro_numero}\n"
     parameters["logradouro_mensagem_confirmacao"] += (
         f"Ponto de referência:  {ponto_referencia}\n" if ponto_referencia != "" else ""

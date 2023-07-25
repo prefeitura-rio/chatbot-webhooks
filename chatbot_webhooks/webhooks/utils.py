@@ -384,11 +384,11 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     else:
         pass
 
-    # Fazer essa conversão usando try previne erros mais pra frente
+    # Pega a parcela do número que está antes do `.`, caso exista um `.`
     try:
-        parameters["logradouro_numero"] = int(parameters["logradouro_numero"])
+        parameters["logradouro_numero"] = parameters["logradouro_numero"].split(".")[0]
     except:  # noqa
-        logger.info("logradouro_numero não é convertível para tipo inteiro.")
+        logger.info("logradouro_numero: falhou ao tentar pegar a parcela antes do `.`")
 
     return True
 
