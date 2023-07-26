@@ -328,13 +328,21 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
             parameters["logradouro_indicador_validade"] = google_geolocator(
                 address_to_google, parameters
             )
-        # Se não existe, é porque existe ao menos um ponto de referencia, então chama o find_place
+        # Se não existe, também chama o geolocator
         else:
-            address_to_google = f"{parameters['logradouro_nome']['original']}, {parameters['logradouro_ponto_referencia']}, Rio de Janeiro - RJ"  # noqa
-            logger.info(f'Input find_place: "{address_to_google}"')
-            parameters["logradouro_indicador_validade"] = google_find_place(
+            address_to_google = f"{parameters['logradouro_nome']['original']}, Rio de Janeiro - RJ"  # noqa
+            logger.info(f'Input geolocator: "{address_to_google}"')
+            parameters["logradouro_indicador_validade"] = google_geolocator(
                 address_to_google, parameters
             )
+        ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###    
+        # # Se não existe, é porque existe ao menos um ponto de referencia, então chama o find_place
+        # else:
+        #     address_to_google = f"{parameters['logradouro_nome']['original']}, {parameters['logradouro_ponto_referencia']}, Rio de Janeiro - RJ"  # noqa
+        #     logger.info(f'Input find_place: "{address_to_google}"')
+        #     parameters["logradouro_indicador_validade"] = google_find_place(
+        #         address_to_google, parameters
+        #     )
 
     except:  # noqa
         parameters = request_data["sessionInfo"]["parameters"]
@@ -352,16 +360,21 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     get_ipp_info(parameters)
 
     # Formatando o logradouro_numero para o envio da mensagem ao cidadão
-    try:
-        logradouro_numero = str(parameters["logradouro_numero"]).split(".")[0]
-    except:  # noqa
-        logradouro_numero = (
-            parameters["logradouro_numero"]
-            if "logradouro_numero" in parameters
-            and parameters["logradouro_numero"] != "None"
-            else ""
-        )
-        logger.info("logradouro_numero: falhou ao tentar pegar a parcela antes do `.`")
+    if parameters["logradouro_numero"]:
+        try:
+            logradouro_numero = str(parameters["logradouro_numero"]).split(".")[0]
+        except:  # noqa
+            logradouro_numero = (
+                parameters["logradouro_numero"]
+                if "logradouro_numero" in parameters
+                and parameters["logradouro_numero"] != "None"
+                else ""
+            )
+            logger.info("logradouro_numero: falhou ao tentar pegar a parcela antes do `.`")
+    else:
+        logradouro_numero = ""
+    
+    print(f'logradouro_numero: {logradouro_numero}, tipo {type(logradouro_numero)}')
 
     # Priorioza o ponto de referência identificado pelo Google
     # mas considera o ponto de referência informado pelo usuário caso o Google não tenha identificado algum
@@ -378,11 +391,16 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     else:
         ponto_referencia = ""
 
+    # Início da geração da mensagem
     parameters["logradouro_mensagem_confirmacao"] = ""
     parameters[
         "logradouro_mensagem_confirmacao"
     ] += f'Logradouro: {parameters["logradouro_nome"]} \n'
-    parameters["logradouro_mensagem_confirmacao"] += f"Número:  {logradouro_numero}\n"
+    parameters["logradouro_mensagem_confirmacao"] += (
+        f"Número:  {logradouro_numero}\n"
+        if logradouro_numero != ""
+        else ""
+    )
     parameters["logradouro_mensagem_confirmacao"] += (
         f"Ponto de referência:  {ponto_referencia}\n" if ponto_referencia != "" else ""
     )
