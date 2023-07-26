@@ -507,3 +507,11 @@ def reseta_parametros(request_data: dict) -> tuple[str, dict]:
         parameters[key] = None
 
     return message, parameters
+
+def identifica_ambiente(request_data: dict) -> tuple[str, dict]:
+    parameters = request_data["sessionInfo"]["parameters"]
+    message = ""
+
+    parameters["ambiente"] = settings.SENTRY_ENVIRONMENT
+
+    return message, parameters
