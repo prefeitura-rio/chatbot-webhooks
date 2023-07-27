@@ -333,7 +333,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         if nome_logradouro_encontrado:
             break
     logger.info("O item escolhido foi:")
-    logger.info(resultado["address_components"])
+    logger.info(resultado)
 
     # Procure as outras informações nesse resultado que possui o nome do logradouro
     logger.info("Itens dentro desse resultado:")
@@ -357,14 +357,14 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         elif "administrative_area_level_1" in item["types"]:
             parameters["logradouro_estado"] = item["short_name"]
 
-    # If we don't find neither the number nor the zip code, we can't proceed
-    if not google_found_number and not google_found_zip_code:
-        return False
+    ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###
+    ## Como agora aceitamos só o nome da rua antes de geolocalizar, existem ruas com mais de um CEP ##
+    # # If we don't find neither the number nor the zip code, we can't proceed
+    # if not google_found_number and not google_found_zip_code:
+    #     return False
 
-    parameters["logradouro_latitude"] = geocode_result[0]["geometry"]["location"]["lat"]
-    parameters["logradouro_longitude"] = geocode_result[0]["geometry"]["location"][
-        "lng"
-    ]
+    parameters["logradouro_latitude"] = resultado["geometry"]["location"]["lat"]
+    parameters["logradouro_longitude"] = resultado["geometry"]["location"]["lng"]
 
     # Verifica se o endereço está fora do Rio de Janeiro, se for o caso, retorna endereço inválido
     # e Dialogflow vai avisar que só atendemos a cidade do Rio
@@ -372,17 +372,18 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         parameters["logradouro_fora_do_rj"] = True
         return False
 
-    # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
-    # o geolocator não tenha conseguido retorná-lo, raspamos a string para achar esse número.
-    if "logradouro_numero_identificado_google" in parameters:
-        if (
-            parameters["logradouro_numero_identificado_google"]
-            and not parameters["logradouro_numero"]
-        ):
-            parameters["logradouro_numero"] = address_find_street_number(address)
-        parameters["logradouro_numero_identificado_google"] = None
-    else:
-        pass
+    ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###
+    # # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
+    # # o geolocator não tenha conseguido retorná-lo, raspamos a string para achar esse número.
+    # if "logradouro_numero_identificado_google" in parameters:
+    #     if (
+    #         parameters["logradouro_numero_identificado_google"]
+    #         and not parameters["logradouro_numero"]
+    #     ):
+    #         parameters["logradouro_numero"] = address_find_street_number(address)
+    #     parameters["logradouro_numero_identificado_google"] = None
+    # else:
+    #     pass
 
     # Pega a parcela do número que está antes do `.`, caso exista um `.`
     try:
