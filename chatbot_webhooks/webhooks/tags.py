@@ -516,6 +516,22 @@ def definir_descricao(request_data: dict) -> tuple[str, dict]:
 
     return message, parameters
 
+def define_variavel_ultima_mensagem(request_data: dict) -> tuple[str, dict]:
+    # logger.info(request_data)
+    parameters = request_data["sessionInfo"]["parameters"]
+    # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
+    message = ""
+    ultima_mensagem_usuario = request_data["text"]
+
+    logger.info(f"A variável {parameters['variavel_recebe_ultima_mensagem']} está recebendo o valor \
+        da última mensagem enviada pelo usuário: \n {ultima_mensagem_usuario}")
+
+    parameters[parameters["variavel_recebe_ultima_mensagem"]] = ultima_mensagem_usuario
+    parameters["variavel_recebe_ultima_mensagem"] = None
+
+    logger.info(parameters)
+
+    return message, parameters
 
 def reseta_parametros(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
