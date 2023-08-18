@@ -28,6 +28,7 @@ from chatbot_webhooks.webhooks.utils import (
     new_ticket,
     validate_CPF,
     validate_email,
+    validate_name,
 )
 
 
@@ -66,7 +67,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 
         # Get the correct string in both cases, when it was collected by dialogflow
         # and when it comes from api
-        if "usuario_nome_cadastrado" in parameters:
+        if "usuario_nome_cadastrado" in parameters and validate_name(parameters):
             if "original" in parameters["usuario_nome_cadastrado"]:
                 usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"][
                     "original"
@@ -75,7 +76,6 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]
         else:
             usuario_nome_cadastrado = ""
-
         requester = Requester(
             email=parameters["usuario_email"] if "usuario_email" in parameters else "",
             cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
@@ -83,7 +83,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             phones=Phones(parameters["usuario_telefone_cadastrado"])
             if "usuario_telefone_cadastrado" in parameters
             else "",
-        )
+        ) 
         # Get street number from Dialogflow, defaults to 1
         street_number = (
             parameters["logradouro_numero"]
@@ -432,24 +432,34 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
 
 def validador_cpf(request_data: dict) -> tuple[str, dict, list]:
     parameters = request_data["sessionInfo"]["parameters"]
-    form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
+    #form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
 
-    parameters["usuario_cpf_valido"] = validate_CPF(parameters, form_parameters_list)
+    parameters["usuario_cpf_valido"] = validate_CPF(parameters)
 
-    return message, parameters, form_parameters_list
+    return message, parameters#, form_parameters_list
 
 
 def validador_email(request_data: dict) -> tuple[str, dict, list]:
     parameters = request_data["sessionInfo"]["parameters"]
-    form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
+    #form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
 
-    parameters["usuario_email_valido"] = validate_email(
-        parameters, form_parameters_list
-    )
+    parameters["usuario_email_valido"] = validate_email(parameters)
 
-    return message, parameters, form_parameters_list
+    return message, parameters#, form_parameters_list
+
+def validador_nome(request_data: dict) -> tuple[str, dict, list]:
+    parameters = request_data["sessionInfo"]["parameters"]
+    #form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
+    message = ""
+
+    parameters["usuario_nome_valido"] = validate_name(parameters)
+
+    # if not parameters["usuario_nome_valido"]:
+    #     message += 'Desculpe, não consegui entender.\n\nVerifique se o nome digitado contém nome e sobrenome e tente novamente.\n\nCaso não queira se identificar, digite "avançar".'
+
+    return message, parameters#, form_parameters_list
 
 
 def confirma_email(request_data: dict) -> tuple[str, dict]:
@@ -524,7 +534,7 @@ def define_variavel_ultima_mensagem(request_data: dict) -> tuple[str, dict]:
     ultima_mensagem_usuario = request_data["text"]
 
     logger.info(f"A variável {parameters['variavel_recebe_ultima_mensagem']} está recebendo o valor \
-        da última mensagem enviada pelo usuário: \n {ultima_mensagem_usuario}")
+    da última mensagem enviada pelo usuário: \n {ultima_mensagem_usuario}")
 
     parameters[parameters["variavel_recebe_ultima_mensagem"]] = ultima_mensagem_usuario
     parameters["variavel_recebe_ultima_mensagem"] = None

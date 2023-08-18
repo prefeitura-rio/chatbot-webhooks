@@ -520,7 +520,7 @@ def send_discord_message(message: str, webhook_url: str) -> bool:
         return False
 
 
-def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
+def validate_CPF(parameters: dict, form_parameters_list: list = []) -> bool:
     """Efetua a validação do CPF, tanto formatação quando dígito verificadores.
 
     Parâmetros:
@@ -565,14 +565,15 @@ def validate_CPF(parameters: dict, form_parameters_list: list) -> bool:
         return False
 
     cpf_formatado = "".join([str(item) for item in numbers])
-    form_parameters_list = form_info_update(
-        form_parameters_list, "usuario_cpf", cpf_formatado
-    )
+    parameters["usuario_cpf"] = cpf_formatado
+    # form_parameters_list = form_info_update(
+    #     form_parameters_list, "usuario_cpf", cpf_formatado
+    # )
 
     return True
 
 
-def validate_email(parameters: dict, form_parameters_list: list) -> bool:
+def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
     """
     Valida se a escrita do email está correta ou não,
     i.e., se está conforme o padrão dos nomes de email e
@@ -584,3 +585,22 @@ def validate_email(parameters: dict, form_parameters_list: list) -> bool:
     email = parameters["usuario_email"]
     regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return re.match(regex, email) is not None
+
+def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
+    """
+    Valida se a string informada tem nome e sobrenome,
+    ou seja, possui um espaço (' ') no meio da string. 
+    Retorna, True: se estiver ok! E False: se não.
+
+    Ex: validade_name("gabriel gazola")
+    """
+    nome = parameters["usuario_nome_cadastrado"]
+    try:
+        nome_quebrado = nome.split(" ")
+        if len(nome_quebrado) > 2 or (len(nome_quebrado) == 2 and nome_quebrado[-1] != ""):
+            return True
+        else:
+            return False
+    except:
+        logger.info(f"Parâmetro usuario_nome_cadastrado tem valor: {nome} e tipo {type(nome)}. Não foi possível fazer a validação, logo, inválido.")
+        return False
