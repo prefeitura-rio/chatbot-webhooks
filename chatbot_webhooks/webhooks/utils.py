@@ -52,6 +52,7 @@ def get_ipp_street_code(parameters: dict) -> dict:
             + f"Address={logradouro_google_completo}&Address2=&Address3=&Neighborhood=&City=&Subregion=&Region=&Postal=&PostalExt=&CountryCode=&SingleLine=&outFields=cl"
             + "&maxLocations=&matchOutOfRange=true&langCode=&locationType=&sourceCountry=&category=&location=&searchExtent=&outSR=&magicKey=&preferredLabelValues=&f=pjson"
         )
+        logger.info(f'Geocode IPP URL: {geocode_logradouro_ipp_url}')
 
         response = requests.request(
             "GET",
@@ -84,8 +85,34 @@ def get_ipp_street_code(parameters: dict) -> dict:
 
             parameters["logradouro_id_ipp"] = logradouro_codigo
             parameters["logradouro_nome_ipp"] = logradouro_real.split(",")[0]
+            best_candidate_bairro_nome_ipp = logradouro_real.split(",")[1][1:]
 
-            return parameters
+            if jaro_similarity(best_candidate_bairro_nome_ipp, parameters["logradouro_bairro_ipp"]) > THRESHOLD:
+                logger.info(
+                    f"Similaridade entre bairro atual e bairro do Logradouro no IPP com maior semelhança é alta o suficiente: {jaro_similarity(best_candidate_bairro_nome_ipp, parameters['logradouro_bairro_ipp'])}"
+                )
+                return parameters
+            else:
+                # Se o bairro do endereço com maior similaridade for diferente do que coletamos usando geolocalização, 
+                # pegamos o codigo correto buscando o nome do bairro desse endereço na base do IPP e pegando o codigo correspondente
+                logger.info("Foi necessário atualizar o bairro")
+                logger.info(f'Bairro obtido anteriormente com geolocalização: {parameters["logradouro_bairro_ipp"]}')
+                url = get_integrations_url("neighborhood_id")
+
+                payload = json.dumps({"name": best_candidate_bairro_nome_ipp})
+
+                key = settings.CHATBOT_INTEGRATIONS_KEY
+
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {key}",
+                }
+
+                response = requests.request("POST", url, headers=headers, data=payload)
+                parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
+                parameters["logradouro_bairro_ipp"] = response.json()["name"]
+
+                logger.info(f'Bairro obtido agora com busca por similaridade: {parameters["logradouro_bairro_ipp"]}')
         except:
             logger.info("Correspondência não exata entre endereço no Google e no IPP")
             return parameters
@@ -159,7 +186,8 @@ def get_ipp_info(parameters: dict) -> bool:
         parameters["logradouro_nome_ipp"] = str(data["address"]["ShortLabel"])
         parameters["logradouro_bairro_ipp"] = str(data["address"]["Neighborhood"])
 
-        logger.info(f'Codigo bairro obtido: {parameters["logradouro_id_bairro_ipp"]}')
+        logger.info(f'Codigo bairro IPP obtido: {parameters["logradouro_id_bairro_ipp"]}')
+        logger.info(f'Nome bairro IPP obtido: {parameters["logradouro_bairro_ipp"]}')
 
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
