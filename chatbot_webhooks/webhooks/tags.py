@@ -389,7 +389,7 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     ):
         ponto_referencia = parameters["logradouro_ponto_referencia"]
     else:
-        ponto_referencia = ""
+        ponto_referencia = ""    
 
     # Início da geração da mensagem
     parameters["logradouro_mensagem_confirmacao"] = ""
@@ -406,7 +406,7 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     )
     parameters["logradouro_mensagem_confirmacao"] += (
         f'Bairro:  {parameters["logradouro_bairro_ipp"]}\n'
-        if "logradouro_bairro_ipp" in parameters
+        if "logradouro_bairro_ipp" in parameters and parameters["logradouro_bairro_ipp"] != None
         else ""
     )
     parameters["logradouro_mensagem_confirmacao"] += (

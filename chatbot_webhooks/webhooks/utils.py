@@ -71,7 +71,7 @@ def get_ipp_street_code(parameters: dict) -> dict:
                 similarity = jaro_similarity(
                     candidato["address"], logradouro_google_completo
                 )
-                if similarity > best_similarity:
+                if similarity > best_similarity and "," in candidato["address"]:
                     best_similarity = similarity
                     logradouro_codigo = candidato["attributes"]["cl"]
                     logradouro_real = candidato["address"]
@@ -85,7 +85,12 @@ def get_ipp_street_code(parameters: dict) -> dict:
 
             parameters["logradouro_id_ipp"] = logradouro_codigo
             parameters["logradouro_nome_ipp"] = logradouro_real.split(",")[0]
-            best_candidate_bairro_nome_ipp = logradouro_real.split(",")[1][1:]
+            try:
+                best_candidate_bairro_nome_ipp = logradouro_real.split(",")[1][1:]
+                logger.info(best_candidate_bairro_nome_ipp)
+            except:
+                logger.info("Logradouro no IPP com maior semelhança não possui bairro no nome")
+                parameters["logradouro_bairro_ipp"] = None
 
             if jaro_similarity(best_candidate_bairro_nome_ipp, parameters["logradouro_bairro_ipp"]) > THRESHOLD:
                 logger.info(
@@ -194,7 +199,7 @@ def get_ipp_info(parameters: dict) -> bool:
         if parameters["logradouro_id_bairro_ipp"] == "0":
             url = get_integrations_url("neighborhood_id")
 
-            payload = json.dumps({"name": parameters["logradouro_bairro"]})
+            payload = json.dumps({"name": parameters["logradouro_bairro"] if "logradouro_bairro" in parameters else ""})
 
             key = settings.CHATBOT_INTEGRATIONS_KEY
 
@@ -206,6 +211,12 @@ def get_ipp_info(parameters: dict) -> bool:
             response = requests.request("POST", url, headers=headers, data=payload)
             parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
             parameters["logradouro_bairro_ipp"] = response.json()["name"]
+
+            # Caso mesmo assim um bairro não tenha sido encontrado, define temporariamente um valor não nulo
+            # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
+            if not parameters["logradouro_bairro_ipp"]:
+                parameters["logradouro_bairro_ipp"] = " "
+
 
         # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
         # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o
