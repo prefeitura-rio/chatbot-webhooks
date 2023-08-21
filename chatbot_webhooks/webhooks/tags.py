@@ -363,7 +363,7 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     # logradouro_id_bairro válidos na base do IPP, não podemos seguir
     if (
         parameters["logradouro_id_ipp"] is None or parameters["logradouro_id_ipp"] = "" or
-        parameters["logradouro_id_bairro_ipp"] is None or parameters["logradouro_id_bairro_ipp"] = "0" or
+        parameters["logradouro_id_bairro_ipp"] is None or parameters["logradouro_id_bairro_ipp"] = "0"
     ):
         parameters["logradouro_indicador_validade"] = False
         return message, parameters
