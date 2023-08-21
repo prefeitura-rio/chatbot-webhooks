@@ -87,7 +87,6 @@ def get_ipp_street_code(parameters: dict) -> dict:
             parameters["logradouro_nome_ipp"] = logradouro_real.split(",")[0]
             try:
                 best_candidate_bairro_nome_ipp = logradouro_real.split(",")[1][1:]
-                logger.info(best_candidate_bairro_nome_ipp)
             except:
                 logger.info("Logradouro no IPP com maior semelhança não possui bairro no nome")
                 parameters["logradouro_bairro_ipp"] = None
@@ -362,7 +361,8 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     # Ache o primeiro resultado que possui o nome do logradouro
     nome_logradouro_encontrado = False
     logger.info("Procurando resultado do geocode com nome do logradouro")
-    for resultado in geocode_result:
+    for posicao, resultado in enumerate(geocode_result):
+        logger.info(f"Item da posição {posicao}:")
         logger.info(resultado)
         for item in resultado["address_components"]:
             if [i for i in ACCEPTED_LOGRADOUROS if i in item["types"]]:
@@ -371,6 +371,12 @@ def google_geolocator(address: str, parameters: dict) -> bool:
                 break
         if nome_logradouro_encontrado:
             break
+
+    # Verifica se o Google conseguiu achar um logradouro
+    if not nome_logradouro_encontrado:
+        logger.info("Google não conseguiu encontrar um logradouro válido")
+        return False
+
     logger.info("O item escolhido foi:")
     logger.info(resultado)
 
