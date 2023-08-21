@@ -87,7 +87,6 @@ def get_ipp_street_code(parameters: dict) -> dict:
             parameters["logradouro_nome_ipp"] = logradouro_real.split(",")[0]
             try:
                 best_candidate_bairro_nome_ipp = logradouro_real.split(",")[1][1:]
-                logger.info(best_candidate_bairro_nome_ipp)
             except:
                 logger.info("Logradouro no IPP com maior semelhança não possui bairro no nome")
                 parameters["logradouro_bairro_ipp"] = None
