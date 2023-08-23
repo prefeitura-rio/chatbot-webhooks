@@ -36,6 +36,7 @@ sentry_sdk.init(
     integrations=[DjangoIntegration()],
     traces_sample_rate=0.25,  # Rate of transactions to collect (1.0 = 100%)
     send_default_pii=True,
+    environment=getenv_or_action("SENTRY_ENVIRONMENT"),
 )
 
 # E-mail configuration

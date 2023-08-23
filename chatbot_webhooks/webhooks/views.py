@@ -6,10 +6,50 @@ from uuid import uuid4
 from django.http import HttpRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from loguru import logger
+from twilio.twiml.messaging_response import MessagingResponse
 
 from chatbot_webhooks.webhooks import tags
 from chatbot_webhooks.webhooks.middleware import detect_intent_text
 from chatbot_webhooks.webhooks.utils import authentication_required
+
+
+@csrf_exempt
+# @authentication_required
+def input_twilio(request: HttpRequest) -> HttpResponse:
+    """
+    Handles input messages from Twilio
+    """
+    request_id = uuid4()
+    logger.info(f"Request ID: {request_id}")
+
+    try:
+        logger.info(f"{request_id} - Request body: {request.body}")
+    except Exception:  # noqa
+        pass
+
+    message = request.POST.get("Body", "")
+    phone = request.POST.get("From", "")
+    logger.info(f"{request_id} - Received message '{message}' from user '{phone}'")
+
+    # Get the answer from Dialogflow CX
+    try:
+        answer_messages: List[str] = detect_intent_text(
+            text=message,
+            session_id=phone,
+            project_id="rj-chatbot-dev",
+            location_id="global",
+            agent_id="e0ea81dd-fce0-4385-8555-30aefb3c29bc",
+            environment_id=None,
+        )
+        logger.info(f"{request_id} - Answers: {answer_messages}")
+    except Exception as exc:  # noqa
+        logger.exception(f"{request_id} - An error occurred: {exc}")
+        raise exc
+
+    # Return the answer
+    response = MessagingResponse()
+    response.message("\n".join(answer_messages))
+    return HttpResponse(content=str(response), status=200)
 
 
 @csrf_exempt
@@ -84,7 +124,7 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
         logger.info(f"{request_id} - Answers: {answer_messages}")
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
-        return HttpResponse(content="An error occurred", status=500)
+        raise exc
 
     # Return the answer
     return HttpResponse(
@@ -136,7 +176,7 @@ def input_telegram(request: HttpRequest) -> HttpResponse:
         )
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
-        return HttpResponse(content="An error occurred", status=500)
+        raise exc
 
     # Return the answer
     logger.info(f"{request_id} - Answers: {answer_messages}")
@@ -181,7 +221,7 @@ def webhook(request: HttpRequest) -> HttpResponse:
         response: Union[str, Tuple[str, Dict[str, Any]]] = webhook_func(body)
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
-        return HttpResponse(content="An error occurred", status=500)
+        raise exc
 
     logger.info(f"{request_id} - Webhook response: {response}")
     if isinstance(response, str):
