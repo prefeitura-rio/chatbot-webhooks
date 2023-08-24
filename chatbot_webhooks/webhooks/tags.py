@@ -77,8 +77,8 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         else:
             usuario_nome_cadastrado = ""
         requester = Requester(
-            email=parameters["usuario_email"] if "usuario_email" in parameters else "",
-            cpf=parameters["usuario_cpf"] if "usuario_cpf" in parameters else "",
+            email=parameters["usuario_email"] if ("usuario_email" in parameters and "usuario_cpf") in parameters else "",
+            cpf=parameters["usuario_cpf"] if ("usuario_cpf" in parameters and "usuario_email") in parameters else "",
             name=usuario_nome_cadastrado,
             phones=Phones(parameters["usuario_telefone_cadastrado"])
             if "usuario_telefone_cadastrado" in parameters
