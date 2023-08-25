@@ -7,6 +7,7 @@ from typing import Union
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
+from geobr import read_municipality
 from google.oauth2 import service_account
 import googlemaps
 from jellyfish import jaro_similarity
@@ -17,7 +18,9 @@ from prefeitura_rio.integrations.sgrc import (
     NewTicket,
     Requester,
 )
+from shapely.geometry import Point
 import requests
+
 
 from chatbot_webhooks.webhooks.models import Token
 
@@ -413,9 +416,19 @@ def google_geolocator(address: str, parameters: dict) -> bool:
 
     # Verifica se o endereço está fora do Rio de Janeiro, se for o caso, retorna endereço inválido
     # e Dialogflow vai avisar que só atendemos a cidade do Rio
-    if parameters["logradouro_cidade"] != "Rio de Janeiro":
-        parameters["logradouro_fora_do_rj"] = True
-        return False
+    if "logradouro_cidade" in parameters:
+        if parameters["logradouro_cidade"] != "Rio de Janeiro":
+            logger.info("O município do endereço é diferente de Rio de Janeiro")
+            parameters["logradouro_fora_do_rj"] = True
+            return False
+    else:
+        logger.info("Não foi identificado um município para esse endereço")
+        shape_rj = read_municipality(code_muni=3304557).iloc[0]["geometry"]
+        point = Point(float(parameters["logradouro_longitude"]),float(parameters["logradouro_latitude"]))
+        if not shape_rj.contains(point):
+            logger.info("O endereço identificado está fora do Rio de Janeiro")
+            parameters["logradouro_fora_do_rj"] = True
+            return False
 
     ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###
     # # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
