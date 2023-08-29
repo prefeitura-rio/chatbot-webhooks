@@ -3,6 +3,7 @@ import base64
 from datetime import datetime
 import json
 import re
+import time
 from typing import Union
 
 from django.conf import settings
@@ -423,12 +424,20 @@ def google_geolocator(address: str, parameters: dict) -> bool:
             return False
     else:
         logger.info("Não foi identificado um município para esse endereço")
+        logger.info("Lendo o shape do RJ")
+        t0 = time.time()
         shape_rj = read_municipality(code_muni=3304557).iloc[0]["geometry"]
+        logger.info(f"Demorou {int(time.time() - t0)} segundos para ler o shape")
+        t0 = time.time()
         point = Point(float(parameters["logradouro_longitude"]),float(parameters["logradouro_latitude"]))
+        logger.info(f"Demorou {int(time.time() - t0)} segundos para criar um ponto geométrico")
+        t0 = time.time()
         if not shape_rj.contains(point):
             logger.info("O endereço identificado está fora do Rio de Janeiro")
+            logger.info(f"Demorou {int(time.time() - t0)} segundos para checar se o ponto está no shape")
             parameters["logradouro_fora_do_rj"] = True
             return False
+        logger.info(f"Demorou {int(time.time() - t0)} segundos para checar se o ponto está no shape. E está.")
 
     ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###
     # # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
