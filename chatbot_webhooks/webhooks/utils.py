@@ -2,11 +2,13 @@
 import base64
 from datetime import datetime
 import json
+from pathlib import Path
 import re
 from typing import Union
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
+import geopandas as gpd
 from google.oauth2 import service_account
 import googlemaps
 from jellyfish import jaro_similarity
@@ -17,7 +19,9 @@ from prefeitura_rio.integrations.sgrc import (
     NewTicket,
     Requester,
 )
+from shapely.geometry import Point
 import requests
+
 
 from chatbot_webhooks.webhooks.models import Token
 
@@ -52,7 +56,7 @@ def get_ipp_street_code(parameters: dict) -> dict:
             + f"Address={logradouro_google_completo}&Address2=&Address3=&Neighborhood=&City=&Subregion=&Region=&Postal=&PostalExt=&CountryCode=&SingleLine=&outFields=cl"
             + "&maxLocations=&matchOutOfRange=true&langCode=&locationType=&sourceCountry=&category=&location=&searchExtent=&outSR=&magicKey=&preferredLabelValues=&f=pjson"
         )
-        logger.info(f'Geocode IPP URL: {geocode_logradouro_ipp_url}')
+        logger.info(f"Geocode IPP URL: {geocode_logradouro_ipp_url}")
 
         response = requests.request(
             "GET",
@@ -88,19 +92,28 @@ def get_ipp_street_code(parameters: dict) -> dict:
             try:
                 best_candidate_bairro_nome_ipp = logradouro_real.split(",")[1][1:]
             except:
-                logger.info("Logradouro no IPP com maior semelhança não possui bairro no nome")
+                logger.info(
+                    "Logradouro no IPP com maior semelhança não possui bairro no nome"
+                )
                 parameters["logradouro_bairro_ipp"] = None
 
-            if jaro_similarity(best_candidate_bairro_nome_ipp, parameters["logradouro_bairro_ipp"]) > THRESHOLD:
+            if (
+                jaro_similarity(
+                    best_candidate_bairro_nome_ipp, parameters["logradouro_bairro_ipp"]
+                )
+                > THRESHOLD
+            ):
                 logger.info(
                     f"Similaridade entre bairro atual e bairro do Logradouro no IPP com maior semelhança é alta o suficiente: {jaro_similarity(best_candidate_bairro_nome_ipp, parameters['logradouro_bairro_ipp'])}"
                 )
                 return parameters
             else:
-                # Se o bairro do endereço com maior similaridade for diferente do que coletamos usando geolocalização, 
+                # Se o bairro do endereço com maior similaridade for diferente do que coletamos usando geolocalização,
                 # pegamos o codigo correto buscando o nome do bairro desse endereço na base do IPP e pegando o codigo correspondente
                 logger.info("Foi necessário atualizar o bairro")
-                logger.info(f'Bairro obtido anteriormente com geolocalização: {parameters["logradouro_bairro_ipp"]}')
+                logger.info(
+                    f'Bairro obtido anteriormente com geolocalização: {parameters["logradouro_bairro_ipp"]}'
+                )
                 url = get_integrations_url("neighborhood_id")
 
                 payload = json.dumps({"name": best_candidate_bairro_nome_ipp})
@@ -116,7 +129,9 @@ def get_ipp_street_code(parameters: dict) -> dict:
                 parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
                 parameters["logradouro_bairro_ipp"] = response.json()["name"]
 
-                logger.info(f'Bairro obtido agora com busca por similaridade: {parameters["logradouro_bairro_ipp"]}')
+                logger.info(
+                    f'Bairro obtido agora com busca por similaridade: {parameters["logradouro_bairro_ipp"]}'
+                )
         except:
             logger.info("Correspondência não exata entre endereço no Google e no IPP")
             return parameters
@@ -190,7 +205,9 @@ def get_ipp_info(parameters: dict) -> bool:
         parameters["logradouro_nome_ipp"] = str(data["address"]["ShortLabel"])
         parameters["logradouro_bairro_ipp"] = str(data["address"]["Neighborhood"])
 
-        logger.info(f'Codigo bairro IPP obtido: {parameters["logradouro_id_bairro_ipp"]}')
+        logger.info(
+            f'Codigo bairro IPP obtido: {parameters["logradouro_id_bairro_ipp"]}'
+        )
         logger.info(f'Nome bairro IPP obtido: {parameters["logradouro_bairro_ipp"]}')
 
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
@@ -198,7 +215,13 @@ def get_ipp_info(parameters: dict) -> bool:
         if parameters["logradouro_id_bairro_ipp"] == "0":
             url = get_integrations_url("neighborhood_id")
 
-            payload = json.dumps({"name": parameters["logradouro_bairro"] if "logradouro_bairro" in parameters else ""})
+            payload = json.dumps(
+                {
+                    "name": parameters["logradouro_bairro"]
+                    if "logradouro_bairro" in parameters
+                    else ""
+                }
+            )
 
             key = settings.CHATBOT_INTEGRATIONS_KEY
 
@@ -215,7 +238,6 @@ def get_ipp_info(parameters: dict) -> bool:
             # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
             if not parameters["logradouro_bairro_ipp"]:
                 parameters["logradouro_bairro_ipp"] = " "
-
 
         # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
         # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o
@@ -413,9 +435,24 @@ def google_geolocator(address: str, parameters: dict) -> bool:
 
     # Verifica se o endereço está fora do Rio de Janeiro, se for o caso, retorna endereço inválido
     # e Dialogflow vai avisar que só atendemos a cidade do Rio
-    if parameters["logradouro_cidade"] != "Rio de Janeiro":
-        parameters["logradouro_fora_do_rj"] = True
-        return False
+    if "logradouro_cidade" in parameters:
+        if parameters["logradouro_cidade"] != "Rio de Janeiro":
+            logger.info("O município do endereço é diferente de Rio de Janeiro")
+            parameters["logradouro_fora_do_rj"] = True
+            return False
+    else:
+        logger.info("Não foi identificado um município para esse endereço")
+        shape_rj = gpd.read_file(
+            Path(__file__).parent.parent.parent / "shape_rj.geojson"
+        ).iloc[0]["geometry"]
+        point = Point(
+            float(parameters["logradouro_longitude"]),
+            float(parameters["logradouro_latitude"]),
+        )
+        if not shape_rj.contains(point):
+            logger.info("O endereço identificado está fora do Rio de Janeiro")
+            parameters["logradouro_fora_do_rj"] = True
+            return False
 
     ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###
     # # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
@@ -631,10 +668,11 @@ def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
     regex = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     return re.match(regex, email) is not None
 
+
 def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
     """
     Valida se a string informada tem nome e sobrenome,
-    ou seja, possui um espaço (' ') no meio da string. 
+    ou seja, possui um espaço (' ') no meio da string.
     Retorna, True: se estiver ok! E False: se não.
 
     Ex: validade_name("gabriel gazola")
@@ -642,10 +680,14 @@ def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
     nome = parameters["usuario_nome_cadastrado"]
     try:
         nome_quebrado = nome.split(" ")
-        if len(nome_quebrado) > 2 or (len(nome_quebrado) == 2 and nome_quebrado[-1] != ""):
+        if len(nome_quebrado) > 2 or (
+            len(nome_quebrado) == 2 and nome_quebrado[-1] != ""
+        ):
             return True
         else:
             return False
     except:
-        logger.info(f"Parâmetro usuario_nome_cadastrado tem valor: {nome} e tipo {type(nome)}. Não foi possível fazer a validação, logo, inválido.")
+        logger.info(
+            f"Parâmetro usuario_nome_cadastrado tem valor: {nome} e tipo {type(nome)}. Não foi possível fazer a validação, logo, inválido."
+        )
         return False

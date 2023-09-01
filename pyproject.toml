@@ -19,6 +19,7 @@ requests = "^2.31.0"
 sentry-sdk = "^1.26.0"
 jellyfish = "^1.0.0"
 twilio = "^8.5.0"
+geobr = "^0.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
