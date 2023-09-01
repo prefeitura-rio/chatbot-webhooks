@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 import re
+import time
 from typing import Union
 
 from django.conf import settings
@@ -451,8 +452,10 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         )
         if not shape_rj.contains(point):
             logger.info("O endereço identificado está fora do Rio de Janeiro")
+            logger.info(f"Demorou {int(time.time() - t0)} segundos para checar se o ponto está no shape")
             parameters["logradouro_fora_do_rj"] = True
             return False
+        logger.info(f"Demorou {int(time.time() - t0)} segundos para checar se o ponto está no shape. E está.")
 
     ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###
     # # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas

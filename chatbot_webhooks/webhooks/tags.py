@@ -297,6 +297,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 
 
 def localizador(request_data: dict) -> Tuple[str, dict]:
+    logger.info(request_data)
     try:
         parameters = request_data["sessionInfo"]["parameters"]
         message = ""
@@ -566,5 +567,17 @@ def identifica_ambiente(request_data: dict) -> tuple[str, dict]:
     message = ""
 
     parameters["ambiente"] = settings.SENTRY_ENVIRONMENT
+
+    return message, parameters
+
+def contador_no_match(request_data: dict) -> tuple[str, dict]:
+    parameters = request_data["sessionInfo"]["parameters"]
+    message = ""
+    logger.info("ENTREI AQUI")
+
+    if "contador_no_match" not in parameters:
+        parameters["contador_no_match"] = 1
+    else:
+        parameters["contador_no_match"] += 1
 
     return message, parameters
