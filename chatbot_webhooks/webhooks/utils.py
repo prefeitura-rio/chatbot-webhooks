@@ -443,6 +443,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
             return False
     else:
         logger.info("Não foi identificado um município para esse endereço")
+        t0 = time.time()
         shape_rj = gpd.read_file(
             Path(__file__).parent.parent.parent / "shape_rj.geojson"
         ).iloc[0]["geometry"]
