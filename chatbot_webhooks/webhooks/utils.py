@@ -210,7 +210,16 @@ def get_ipp_info(parameters: dict) -> bool:
             f'Codigo bairro IPP obtido: {parameters["logradouro_id_bairro_ipp"]}'
         )
         logger.info(f'Nome bairro IPP obtido: {parameters["logradouro_bairro_ipp"]}')
+    except:
+        logger.info("Falha na API do IPP que identifica endereço através de lat/long.")
+        logger.info("Retorno abaixo")
+        logger.info(data)
+        logger.info("Inicializando as variáveis `logradouro_id_bairro_ipp` = 0 e `logradouro_nome_ipp` = ` `, \
+            para que os próximos códigos de identificação de informações do IPP sejam executados")
+        parameters["logradouro_id_bairro_ipp"] = "0"
+        parameters["logradouro_nome_ipp"] = " "
 
+    try:     
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
         if parameters["logradouro_id_bairro_ipp"] == "0":
@@ -247,7 +256,7 @@ def get_ipp_info(parameters: dict) -> bool:
 
         return True
     except:  # noqa
-        logger.info(data)
+        logger.info("Erro em alguma das funções: (get_ipp_street_code, get_integrations_url(`neighborhood_id`)")
         parameters["abertura_manual"] = True
         return False
 
