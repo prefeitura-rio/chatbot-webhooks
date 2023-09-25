@@ -57,6 +57,7 @@ def ai(request_data: dict) -> str:
 
 def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
     try:
+        logger.info("Entro aqui")
         parameters = request_data["sessionInfo"]["parameters"]
         message = ""
 
@@ -92,7 +93,9 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         )
         # Extract number from string
         street_number = "".join(filter(str.isdigit, street_number))
-        # 1647 - Remoção de resíduos em logradouro
+#############
+###########  1647 - Remoção de resíduos em logradouro
+#############
         if str(codigo_servico_1746) == "1647":
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
@@ -189,7 +192,9 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_interno"
             return message, parameters
-        # 1647 - Poda de Árvore em Logradouro
+#############
+###########  1647 - Poda de Árvore em Logradouro
+############# 
         elif str(codigo_servico_1746) == "1614":
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
@@ -244,6 +249,105 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                     description=descricao_completa,
                     address=address,
                     requester=requester,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
+#############            
+########### 1464 - Verificação de Ar Condicionado Inoperante em Ônibus
+#############
+        elif str(codigo_servico_1746) == "1464":
+            logger.info("Entro aqui também")
+            ar_condicionado_inoperante_data_ocorrencia = parameters["ar_condicionado_inoperante_data_ocorrencia"]
+            # Define parâmetros específicos desse serviço
+            # Extrair os valores do dicionário
+            dia = int(ar_condicionado_inoperante_data_ocorrencia["day"])
+            mes = int(ar_condicionado_inoperante_data_ocorrencia["month"])
+            ano = int(ar_condicionado_inoperante_data_ocorrencia["year"])
+            logger.info("Tudo certo aqui 1")
+            logger.info(dia)
+            logger.info(mes)
+            logger.info(ano)
+            # Criar a variável data_ocorrencia no formato "dd/mm/aaaa"
+            data_ocorrencia = f"{dia:02d}/{mes:02d}/{ano}"
+            logger.info(data_ocorrencia)
+            # Verificar se os parâmetros de hora, minuto e segundo estão presentes no dicionário
+            if "hours" in ar_condicionado_inoperante_data_ocorrencia and \
+            "minutes" in ar_condicionado_inoperante_data_ocorrencia and \
+            "seconds" in ar_condicionado_inoperante_data_ocorrencia:
+                logger.info("Entrei aqui")
+                hora = int(ar_condicionado_inoperante_data_ocorrencia["hours"])
+                minuto = int(ar_condicionado_inoperante_data_ocorrencia["minutes"])
+                segundo = int(ar_condicionado_inoperante_data_ocorrencia["seconds"])
+                logger.info("Até aqui deu certo")
+                hora_ocorrencia = f"{hora:02d}:{minuto:02d}:{segundo:02d}"
+            else:
+                hora_ocorrencia = None  # Define como None se os parâmetros de hora não estiverem presentes
+
+            numero_carro = parameters.get("ar_condicionado_inoperante_numero_onibus", None)
+            logger.info("Opa, cheguei aqui")
+            specific_attributes = {
+                "dataOcorrenc": data_ocorrencia,
+                "horOcorrenc": hora_ocorrencia,
+                "numelinhOnib": parameters["ar_condicionado_inoperante_numero_linha"],
+                "numCarro": numero_carro,
+            }
+            logger.info("Opa, cheguei aqui 2")
+            # Create new ticket
+            try:
+                logger.info("Serviço: Verificação de Ar Condicionado Inoperante em Ônibus")
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+                # Joins description with reference point
+                descricao_completa = parameters["servico_1746_descricao"]
+
+                ticket: NewTicket = new_ticket(
+                    classification_code=1464,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
                 )
                 # Atributos do ticket
                 parameters["solicitacao_protocolo"] = ticket.protocol_id
