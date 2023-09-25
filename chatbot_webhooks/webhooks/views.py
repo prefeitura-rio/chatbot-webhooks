@@ -119,7 +119,7 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
     # Get the answer from Dialogflow CX
     try:
         answer_messages: List[str] = detect_intent_text(
-            text=message, session_id=session_id
+            text=message, session_id=session_id, parameters={"phone": phone}
         )
         logger.info(f"{request_id} - Answers: {answer_messages}")
     except Exception as exc:  # noqa
