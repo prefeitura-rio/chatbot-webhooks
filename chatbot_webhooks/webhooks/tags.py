@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Tuple
 
+from datetime import datetime, timedelta
 from django.conf import settings
 from loguru import logger
 from prefeitura_rio.integrations.sgrc.exceptions import (
@@ -294,24 +295,65 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 ########### 1464 - Verificação de Ar Condicionado Inoperante em Ônibus
 #############
         elif str(codigo_servico_1746) == "1464":
-            ar_condicionado_inoperante_data_ocorrencia = parameters["ar_condicionado_inoperante_data_ocorrencia"]
+
+            # Define um endereço aleatório (do COR) só pra abrir o ticket
+            address = Address(
+                street="Rua Ulysses Guimarães",
+                street_code="211144",
+                neighborhood="Cidade Nova",
+                neighborhood_code="8",
+                number="300",
+                locality="",
+                zip_code="20211-225",
+            )
+
             # Define parâmetros específicos desse serviço
-            # Extrair os valores do dicionário
-            dia = int(ar_condicionado_inoperante_data_ocorrencia["day"])
-            mes = int(ar_condicionado_inoperante_data_ocorrencia["month"])
-            ano = int(ar_condicionado_inoperante_data_ocorrencia["year"])
-            # Criar a variável data_ocorrencia no formato "dd/mm/aaaa"
-            data_ocorrencia = f"{dia:02d}/{mes:02d}/{ano}"
-            # Verificar se os parâmetros de hora, minuto e segundo estão presentes no dicionário
-            if "hours" in ar_condicionado_inoperante_data_ocorrencia and \
-            "minutes" in ar_condicionado_inoperante_data_ocorrencia and \
-            "seconds" in ar_condicionado_inoperante_data_ocorrencia:
-                hora = int(ar_condicionado_inoperante_data_ocorrencia["hours"])
-                minuto = int(ar_condicionado_inoperante_data_ocorrencia["minutes"])
-                segundo = int(ar_condicionado_inoperante_data_ocorrencia["seconds"])
-                hora_ocorrencia = f"{hora:02d}:{minuto:02d}:{segundo:02d}"
+
+            ar_condicionado_inoperante_data_ocorrencia = parameters["ar_condicionado_inoperante_data_ocorrencia"]
+
+            # Verificar se a chave "past" está presente no dicionário
+            if "past" in ar_condicionado_inoperante_data_ocorrencia:
+                data_ocorrencia_dict = ar_condicionado_inoperante_data_ocorrencia["past"]
             else:
-                hora_ocorrencia = None  # Define como None se os parâmetros de hora não estiverem presentes
+                data_ocorrencia_dict = ar_condicionado_inoperante_data_ocorrencia
+
+            # Verificar se "startDateTime" e "endDateTime" estão presentes
+            if "startDateTime" in data_ocorrencia_dict and "endDateTime" in data_ocorrencia_dict:
+                start_datetime = data_ocorrencia_dict["startDateTime"]
+                end_datetime = data_ocorrencia_dict["endDateTime"]
+            elif "startDate" in data_ocorrencia_dict and "endDate" in data_ocorrencia_dict:
+                start_datetime = data_ocorrencia_dict["startDate"]
+                end_datetime = data_ocorrencia_dict["endDate"]
+            else:
+                # Se nenhum dos conjuntos de campos estiver presente, use o dicionário original
+                start_datetime = data_ocorrencia_dict
+                end_datetime = data_ocorrencia_dict
+
+            # Criar objetos de data e hora a partir dos dados do dicionário
+            start_dt = datetime(year=int(start_datetime["year"]),
+                                month=int(start_datetime["month"]),
+                                day=int(start_datetime["day"]),
+                                hour=int(start_datetime.get("hours", 0)),
+                                minute=int(start_datetime.get("minutes", 0)),
+                                second=int(start_datetime.get("seconds", 0)))
+
+            end_dt = datetime(year=int(end_datetime["year"]),
+                            month=int(end_datetime["month"]),
+                            day=int(end_datetime["day"]),
+                            hour=int(end_datetime.get("hours", 0)),
+                            minute=int(end_datetime.get("minutes", 0)),
+                            second=int(end_datetime.get("seconds", 0)))
+
+            # Calcular o ponto médio do intervalo
+            middle_dt = start_dt + (end_dt - start_dt) / 2
+
+            # Extrair a data e hora do ponto médio
+            data_ocorrencia = middle_dt.strftime("%d/%m/%Y")
+            hora_ocorrencia = middle_dt.strftime("%H:%M:%S")
+
+            # Imprimir as variáveis
+            logger.info(f"data_ocorrencia: {data_ocorrencia}")
+            logger.info(f"hora_ocorrencia: {hora_ocorrencia}")
 
             numero_carro = parameters.get("ar_condicionado_inoperante_numero_onibus", None)
 
@@ -330,10 +372,11 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.info("Informações Específicas")
                 logger.info(specific_attributes)
                 logger.info("--------------------")
-                # Joins description with reference point
+                # Joins description
                 descricao_completa = parameters["servico_1746_descricao"]
 
                 ticket: NewTicket = new_ticket(
+                    address=address,
                     classification_code=1464,
                     description=descricao_completa,
                     requester=requester,
