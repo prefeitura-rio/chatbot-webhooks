@@ -1125,13 +1125,13 @@ virtualenv = ">=20.10.0"
 
 [[package]]
 name = "prefeitura-rio"
-version = "1.0.0"
+version = "1.0.2"
 description = "Pacote Python que implementa utilidades para nossos projetos!"
 optional = false
 python-versions = ">=3.9,<3.11"
 files = [
-    {file = "prefeitura_rio-1.0.0-py3-none-any.whl", hash = "sha256:3c1f66fd746b29b2836a8822deec663f4e5cbd376cbac397fea6a523839af981"},
-    {file = "prefeitura_rio-1.0.0.tar.gz", hash = "sha256:5cb279706fc3dac92c70aa0b0bbf444aceae13f67ea0d8890d0a1bbe380b44ad"},
+    {file = "prefeitura_rio-1.0.2-py3-none-any.whl", hash = "sha256:6358eb3701e4197da2ae1ae1d6038efca0368a2dd19ec1d99eb88c8b0383899f"},
+    {file = "prefeitura_rio-1.0.2.tar.gz", hash = "sha256:9d021ef92ee94184f911558b395e961efdc03f24801df6fb75fa5e66559da093"},
 ]
 
 [package.dependencies]
@@ -1786,4 +1786,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.11"
-content-hash = "4709a19b74b324220ddaf8d4ce3abcd49e8af8f8876270d5678d09dd054ceee5"
+content-hash = "36e84cab58568ede0156c7a673f68f624de2349c3174adf22c6ba2e38d70522f"

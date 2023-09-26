@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import re
 import time
-from typing import Union
+from typing import Any, Dict, Union
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
@@ -214,12 +214,14 @@ def get_ipp_info(parameters: dict) -> bool:
         logger.info("Falha na API do IPP que identifica endereço através de lat/long.")
         logger.info("Retorno abaixo")
         logger.info(data)
-        logger.info("Inicializando as variáveis `logradouro_id_bairro_ipp` = 0 e `logradouro_nome_ipp` = ` `, \
-            para que os próximos códigos de identificação de informações do IPP sejam executados")
+        logger.info(
+            "Inicializando as variáveis `logradouro_id_bairro_ipp` = 0 e `logradouro_nome_ipp` = ` `, \
+            para que os próximos códigos de identificação de informações do IPP sejam executados"
+        )
         parameters["logradouro_id_bairro_ipp"] = "0"
         parameters["logradouro_nome_ipp"] = " "
 
-    try:     
+    try:
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
         if parameters["logradouro_id_bairro_ipp"] == "0":
@@ -256,7 +258,9 @@ def get_ipp_info(parameters: dict) -> bool:
 
         return True
     except:  # noqa
-        logger.info("Erro em alguma das funções: (get_ipp_street_code, get_integrations_url(`neighborhood_id`)")
+        logger.info(
+            "Erro em alguma das funções: (get_ipp_street_code, get_integrations_url(`neighborhood_id`)"
+        )
         parameters["abertura_manual"] = True
         return False
 
@@ -462,10 +466,14 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         )
         if not shape_rj.contains(point):
             logger.info("O endereço identificado está fora do Rio de Janeiro")
-            logger.info(f"Demorou {int(time.time() - t0)} segundos para checar se o ponto está no shape")
+            logger.info(
+                f"Demorou {int(time.time() - t0)} segundos para checar se o ponto está no shape"
+            )
             parameters["logradouro_fora_do_rj"] = True
             return False
-        logger.info(f"Demorou {int(time.time() - t0)} segundos para checar se o ponto está no shape. E está.")
+        logger.info(
+            f"Demorou {int(time.time() - t0)} segundos para checar se o ponto está no shape. E está."
+        )
 
     ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###
     # # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
@@ -535,10 +543,11 @@ def mask_email(email: str, mask_chacacter: str = "x") -> str:
 def new_ticket(
     classification_code: str,
     description: str,
-    address: Address,
+    address: Address = None,
     date_time: Union[datetime, str] = None,
     requester: Requester = None,
     occurrence_origin_code: str = "28",
+    specific_attributes: Dict[str, Any] = None,
 ) -> NewTicket:
     """
     Creates a new ticket.
@@ -576,6 +585,7 @@ def new_ticket(
             date_time=date_time,
             requester=requester,
             occurrence_origin_code=occurrence_origin_code,
+            specific_attributes=specific_attributes,
         )
         send_discord_message(
             message=(
