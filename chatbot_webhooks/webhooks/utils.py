@@ -543,7 +543,7 @@ def mask_email(email: str, mask_chacacter: str = "x") -> str:
 def new_ticket(
     classification_code: str,
     description: str,
-    address: Address,
+    address: Address = None,
     date_time: Union[datetime, str] = None,
     requester: Requester = None,
     occurrence_origin_code: str = "28",
