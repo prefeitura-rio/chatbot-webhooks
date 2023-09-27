@@ -873,7 +873,7 @@ def checa_endereco_especial(request_data: dict) -> tuple[str, dict]:
         logger.info("Entendi que o endereço é em uma comunidade ou similar.")
         parameters["logradouro_indicador_comunidade"] = True
     else:
-        logger.infp("O endereço não fica em uma comunidade ou similar.")
+        logger.info("O endereço não fica em uma comunidade ou similar.")
 
     parameters["reparo_luminaria_endereco_especial_executado"] = True
 
