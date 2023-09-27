@@ -470,16 +470,16 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             )
 
             # Definindo parâmetros específicos do serviço
-            if parameters["reparo_luminaria_quadra_esportes"] == 1.0 or parameters["reparo_luminaria_localizacao"] == "Quadra de esportes":
+            if parameters.get("reparo_luminaria_quadra_esportes", None) == 1.0 or parameters["reparo_luminaria_localizacao"] == "Quadra de esportes":
                 dentro_quadra_esporte = "1"
             else:
                 dentro_quadra_esporte = "0"
-            
-            if parameters["logradouro_indicador_praca"] or parameters["reparo_luminaria_localizacao"] == "Praça":
+
+            if parameters.get("logradouro_indicador_praca", None) or parameters["reparo_luminaria_localizacao"] == "Praça":
                 esta_na_praca = "1"
             else:
                 esta_na_praca = "0"
-            
+
             specific_attributes = {
                 "defeitoLuminaria": parameters["reparo_luminaria_defeito_classificado"],
                 "dentroQuadraEsporte": dentro_quadra_esporte,
@@ -489,7 +489,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             }
 
             # Complementa a descrição dependendo da localização da luminária
-            if parameters["logradouro_indicador_comunidade"]:
+            if parameters.get("logradouro_indicador_comunidade", None):
                 descricao_completa = f'{parameters["servico_1746_descricao"]}. Dados do condomínio: {parameters["reparo_luminaria_dados_comunidade"]}'
             else:
                 descricao_completa = parameters["servico_1746_descricao"]
