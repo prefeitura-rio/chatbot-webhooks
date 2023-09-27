@@ -860,7 +860,7 @@ def checa_endereco_especial(request_data: dict) -> tuple[str, dict]:
 
     # Remover acentos e transformar para minúsculas
     logradouro_nome = unidecode(logradouro_nome).lower()
-    ponto_referencia = unidecode(ponto_referencia).lower()
+    ponto_referencia = unidecode(ponto_referencia).lower() if ponto_referencia else ""
 
     # Verificar se a string contém pelo menos uma das palavras-chave
     if any(palavra in logradouro_nome for palavra in palavras_praca):
