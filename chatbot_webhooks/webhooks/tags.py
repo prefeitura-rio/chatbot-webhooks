@@ -867,7 +867,7 @@ def checa_endereco_especial(request_data: dict) -> tuple[str, dict]:
         logger.info("Entendi que o local é uma praça ou próximo de uma")
         parameters["logradouro_indicador_praca"] = True
     else:
-        logger.infp("O local não é uma praça.")
+        logger.info("O local não é uma praça.")
 
     if any(palavra in logradouro_nome for palavra in palavras_comunidade) or any(palavra in ponto_referencia for palavra in palavras_comunidade):
         logger.info("Entendi que o endereço é em uma comunidade ou similar.")
