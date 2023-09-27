@@ -3,6 +3,7 @@ import json
 from typing import Any, Dict, List, Tuple, Union
 from uuid import uuid4
 
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from loguru import logger
@@ -126,9 +127,23 @@ def input_ascsac(request: HttpRequest) -> HttpResponse:
         logger.exception(f"{request_id} - An error occurred: {exc}")
         raise exc
 
+    # Check if there are options to be presented to the user as buttons
+    buttons = []
+    new_answer_messages = []
+    for answer_message in answer_messages:
+        if answer_message.startswith(settings.SIGNATURE_BUTTONS_MESSAGE):
+            # Crop the signature
+            answer_message = answer_message[len(settings.SIGNATURE_BUTTONS_MESSAGE) :]
+            # Get the buttons
+            buttons = [option.strip() for option in answer_message.split(",")]
+        else:
+            new_answer_messages.append(answer_message)
+    answer_messages = new_answer_messages
+
     # Return the answer
     return HttpResponse(
-        content=json.dumps({"answer_messages": answer_messages}), status=200
+        content=json.dumps({"answer_messages": answer_messages, "buttons": buttons}),
+        status=200,
     )
 
 
