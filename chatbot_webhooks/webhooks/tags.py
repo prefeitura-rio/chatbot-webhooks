@@ -430,25 +430,70 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 ########### 152 - Reparo de Luminária
 #############
         elif str(codigo_servico_1746) == "152":
+            logger.info(parameters)
 
-            # Define um endereço aleatório (do COR) só pra abrir o ticket
+             # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters[
+                    "logradouro_ponto_referencia_identificado"
+                ]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
             address = Address(
-                street="Rua Ulysses Guimarães",
-                street_code="211144",
-                neighborhood="Cidade Nova",
-                neighborhood_code="8",
-                number="300",
-                locality="",
-                zip_code="20211-225",
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
             )
 
+            # Definindo parâmetros específicos do serviço
+            if parameters["reparo_luminaria_quadra_esportes"] == 1.0 or parameters["reparo_luminaria_localizacao"] == "Quadra de esportes":
+                dentro_quadra_esporte = "1"
+            else:
+                dentro_quadra_esporte = "0"
+            
+            if parameters["logradouro_indicador_praca"] or parameters["reparo_luminaria_localizacao"] == "Praça":
+                esta_na_praca = "1"
+            else:
+                esta_na_praca = "0"
+            
             specific_attributes = {
-                "defeitoLuminaria": "Apagada",
-                "dentroQuadraEsporte": "1",
-                "estaNaPraca": "0",
-                "localizacaoLuminaria": "Monumento",
-                "nomePraca": "qualquer coisa",
+                "defeitoLuminaria": parameters["reparo_luminaria_defeito_classificado"],
+                "dentroQuadraEsporte": dentro_quadra_esporte,
+                "estaNaPraca": esta_na_praca,
+                "localizacaoLuminaria": parameters["reparo_luminaria_localizacao"],
+                "nomePraca": "",
             }
+
+            # Complementa a descrição dependendo da localização da luminária
+            if parameters["logradouro_indicador_comunidade"]:
+                descricao_completa = f'{parameters["servico_1746_descricao"]}. Dados do condomínio: {parameters["reparo_luminaria_dados_comunidade"]}'
+            else:
+                descricao_completa = parameters["servico_1746_descricao"]
+
             # Create new ticket
             try:
                 logger.info("Serviço: Reparo de Luminária")
@@ -460,8 +505,6 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.info("Informações Específicas")
                 logger.info(specific_attributes)
                 logger.info("--------------------")
-                # Joins description
-                descricao_completa = parameters["servico_1746_descricao"]
 
                 ticket: NewTicket = new_ticket(
                     address=address,
