@@ -719,7 +719,7 @@ def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
 def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
 
     # Pegando o token de autenticação
-    resp2 = requests.post(
+    autenticacao = requests.post(
         "http://10.2.223.161/api/security/token",
         verify=False,
         headers={"Host": "epgmhom.rio.rj.gov.br"},
@@ -730,7 +730,7 @@ def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
         },
     )
 
-    token = f'Bearer {resp2.json()["access_token"]}'
+    token = f'Bearer {autenticacao.json()["access_token"]}'
 
     # endpoint = v2/cdas/protestadas
     # Fazer uma solicitação GET
@@ -751,9 +751,9 @@ def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     else:
         logger.info(f'Algo deu errado durante a solicitação, segue erro: {resp.json()["data"][0]["value"]}')
         motivos = []
-        for item in itens:
+        for item in resp.json()["data"]:
             motivos.append(item["value"])
-        return {"sucesso": False, "motivos": motivos}
+        return {"erro": True, "motivos": motivos}
 
     # guias_protestadas = resp.json()["data"]
 

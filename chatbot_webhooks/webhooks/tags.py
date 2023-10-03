@@ -30,6 +30,7 @@ from chatbot_webhooks.webhooks.utils import (
     validate_CPF,
     validate_email,
     validate_name,
+    pgm_api,
 )
 
 from unidecode import unidecode
@@ -783,27 +784,6 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
         parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     return message, parameters
 
-
-def definir_descricao(request_data: dict) -> tuple[str, dict]:
-    # logger.info(request_data)
-    parameters = request_data["sessionInfo"]["parameters"]
-    # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
-    message = ""
-    ultima_mensagem_usuario = request_data["text"]
-
-    logger.info(f"Ultima mensagem: \n {ultima_mensagem_usuario}")
-
-    if parameters["codigo_servico_1746"] == "1647":
-        logger.info("Descrição de Remoção de Resíduo em Logradouro")
-        parameters["servico_1746_descricao"] = ultima_mensagem_usuario
-    elif parameters["codigo_servico_1746"] == "1614":
-        logger.info("Descrição de Poda de Árvore em Logradouro")
-        parameters["servico_1746_descricao"] = ultima_mensagem_usuario
-
-    logger.info(parameters)
-
-    return message, parameters
-
 def define_variavel_ultima_mensagem(request_data: dict) -> tuple[str, dict]:
     # logger.info(request_data)
     parameters = request_data["sessionInfo"]["parameters"]
@@ -907,5 +887,56 @@ def rlu_classifica_defeito(request_data: dict) -> tuple[str, dict]:
     logger.info(f"As seleções do usuário foram: {tuple([defeito, quantidade, inter_ou_bloco])}")
     parameters["reparo_luminaria_defeito_classificado"] = mapeia_defeito[tuple([defeito, quantidade, inter_ou_bloco])]
     logger.info(f"O defeito classificado foi: {parameters['reparo_luminaria_defeito_classificado']}")
+
+    return message, parameters
+
+def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
+    parameters = request_data["sessionInfo"]["parameters"]
+    message = ""
+
+    mapeia_opcoes_consulta = {
+        1: "inscricaoImobiliaria",
+        2: "cda",
+        3: "cpfCnpj",
+    }
+
+    parametros_entrada = {
+        "origem_solicitação": 0,
+        mapeia_opcoes_consulta[parameters["opcao_consulta_protesto"]]: parameters["parametro_de_consulta"],
+    }    
+
+    registros = pgm_api(endpoint="v2/cdas/protestadas", data=parametros_entrada)
+
+    if "erro" in registros:
+        parameters["api_resposta_sucesso"] = False
+        if 'BadRequest - Não foram encontradas informações de protesto.' in registros["motivos"]:
+            parameters["api_resposta_erro"] = False
+            parameters["api_descricao_erro"] = "Não foram encontradas informações de protesto."
+        else:
+            parameters["api_resposta_erro"] = True
+
+            # partes = mensagem_erro.split('BadRequest - ', 1)
+            # # Verificar se há pelo menos duas partes após a divisão
+            # if len(partes) >= 2:
+            #     descricao_erro = partes[1]  # O segundo elemento após a divisão contém a descrição do erro
+            #     descricao_erro = descricao_erro.strip()
+
+            parameters["api_descricao_erro"] = "Ocorreu um erro na sua solicitação, por favor tente mais tarde."
+    else:
+        parameters["api_resposta_sucesso"] = True
+
+        mensagem_cda_protestadas = ""
+
+        for i, cda in enumerate(registros):
+            ex_guia = f'{cda["numExercicio"]}/{cda["guia"]}' if cda.get("guia", "") != "" else cda["numExercicio"]
+            mensagem_cda_protestadas += f'*{i+1}.*\t*{cda["cdaId"]}* (natureza {cda["naturezaDivida"]} - exerc./guia {ex_guia})'
+            mensagem_cda_protestadas += f'\n{cda["descricaoMovimentoProtesto"]} Em {cda["dataultimoMovimentoProtesto"]}'
+            if cda.get("numeroCartorio", "") != "" and cda.get("numeroCartorio", None):
+                mensagem_cda_protestadas += f'\nCartório {cda["numeroCartorio"]} - Protocolo nº {cda["numeroProtocolo"]}'
+            else:
+                pass
+            mensagem_cda_protestadas += "\n\n" if (i+1) < len(registros) else ""
+        
+        parameters["mensagem_cda_protestadas"] = mensagem_cda_protestadas
 
     return message, parameters
