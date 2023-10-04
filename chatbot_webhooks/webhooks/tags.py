@@ -927,6 +927,7 @@ def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
 
         mensagem_cda_protestadas = ""
 
+        # Monta mensagem
         for i, cda in enumerate(registros):
             ex_guia = f'{cda["numExercicio"]}/{cda["guia"]}' if cda.get("guia", "") != "" else cda["numExercicio"]
             mensagem_cda_protestadas += f'*{i+1}.*\t*{cda["cdaId"]}* (natureza {cda["naturezaDivida"]} - exerc./guia {ex_guia})'
