@@ -749,7 +749,7 @@ def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
         logger.info("A API retornou registros.")
         return resp.json()["data"]
     else:
-        logger.info(f'Algo deu errado durante a solicitação, segue erro: {resp.json()["data"][0]["value"]}')
+        logger.info(f'Algo deu errado durante a solicitação, segue justificativa: {resp.json()["data"][0]["value"]}')
         motivos = []
         for item in resp.json()["data"]:
             motivos.append(item["value"])
