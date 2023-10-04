@@ -76,7 +76,7 @@ jobs:
           service: ${{ env.GCR_SERVICE }}
           region: ${{ env.GCR_REGION }}
           image: docker.io/${{ env.DOCKERHUB_USERNAME }}/${{ env.DOCKERHUB_REPOSITORY }}:${{ github.sha }}
-          flags: '--add-cloudsql-instances=datario:us-central1:postgres-side --port=80 --allow-unauthenticated'
+          flags: '--add-cloudsql-instances=datario:us-central1:postgres-side --port=80 --allow-unauthenticated --concurrency=10'
           secrets: |
             ADMINS=CHATBOT_WEBHOOKS_PROD_ADMINS:latest
             DB_HOST=CHATBOT_WEBHOOKS_PROD_DB_HOST:latest
