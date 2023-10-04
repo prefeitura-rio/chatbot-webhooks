@@ -570,40 +570,17 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
         parameters = request_data["sessionInfo"]["parameters"]
         message = ""
 
-        # Inicializa essa variável para a chave existir no dicionário
+        # Inicializa essas variáveis para as chaves existirem no dicionário
         parameters["logradouro_ponto_referencia_identificado"] = None
-        # Checa se o usuario informou o numero da rua
-        try:
-            parameters["logradouro_numero"]
-        except:  # noqa
-            logger.warning("Não foi informado um número de logradouro")
-            parameters["logradouro_numero"] = None
+        parameters["logradouro_numero"] = None
+        parameters["logradouro_ponto_referencia"] = None
 
-        # Checa se o usuario informou algum ponto de referencia
-        try:
-            parameters["logradouro_ponto_referencia"]
-        except:  # noqa
-            logger.warning("Não foi informado um ponto de referência")
-            parameters["logradouro_ponto_referencia"] = None
+        address_to_google = f"{parameters['logradouro_nome']}, Rio de Janeiro - RJ"  # noqa
+        logger.info(f'Input geolocator: "{address_to_google}"')
+        parameters["logradouro_indicador_validade"] = google_geolocator(
+            address_to_google, parameters
+        )
 
-        # Se existe numero, chama o geolocator
-        if parameters["logradouro_numero"]:
-            try:
-                parameters["logradouro_numero"] = str(parameters["logradouro_numero"]).split(".")[0]
-            except:  # noqa
-                pass
-            address_to_google = f"{parameters['logradouro_nome']['original']} {parameters['logradouro_numero']}, Rio de Janeiro - RJ"  # noqa
-            logger.info(f'Input geolocator: "{address_to_google}"')
-            parameters["logradouro_indicador_validade"] = google_geolocator(
-                address_to_google, parameters
-            )
-        # Se não existe, também chama o geolocator
-        else:
-            address_to_google = f"{parameters['logradouro_nome']['original']}, Rio de Janeiro - RJ"  # noqa
-            logger.info(f'Input geolocator: "{address_to_google}"')
-            parameters["logradouro_indicador_validade"] = google_geolocator(
-                address_to_google, parameters
-            )
         ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###    
         # # Se não existe, é porque existe ao menos um ponto de referencia, então chama o find_place
         # else:
