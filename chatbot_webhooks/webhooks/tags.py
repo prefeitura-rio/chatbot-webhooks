@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import Tuple
 
+from datetime import datetime, timedelta
 from django.conf import settings
 from loguru import logger
 from prefeitura_rio.integrations.sgrc.exceptions import (
@@ -31,6 +32,7 @@ from chatbot_webhooks.webhooks.utils import (
     validate_name,
 )
 
+from unidecode import unidecode
 
 def ai(request_data: dict) -> str:
     input_message: str = request_data["text"]
@@ -92,7 +94,9 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         )
         # Extract number from string
         street_number = "".join(filter(str.isdigit, street_number))
-        # 1647 - Remoção de resíduos em logradouro
+#############
+###########  1647 - Remoção de resíduos em logradouro
+#############
         if str(codigo_servico_1746) == "1647":
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
@@ -189,7 +193,9 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_interno"
             return message, parameters
-        # 1647 - Poda de Árvore em Logradouro
+#############
+###########  1647 - Poda de Árvore em Logradouro
+############# 
         elif str(codigo_servico_1746) == "1614":
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
@@ -286,6 +292,268 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_interno"
             return message, parameters
+#############            
+########### 1464 - Verificação de Ar Condicionado Inoperante em Ônibus
+#############
+        elif str(codigo_servico_1746) == "1464":
+
+            # Define um endereço aleatório (do COR) só pra abrir o ticket
+            address = Address(
+                street="Rua Ulysses Guimarães",
+                street_code="211144",
+                neighborhood="Cidade Nova",
+                neighborhood_code="8",
+                number="300",
+                locality="",
+                zip_code="20211-225",
+            )
+
+            # Define parâmetros específicos desse serviço
+
+            ar_condicionado_inoperante_data_ocorrencia = parameters["ar_condicionado_inoperante_data_ocorrencia"]
+
+            # Verificar se a chave "past" está presente no dicionário
+            if "past" in ar_condicionado_inoperante_data_ocorrencia:
+                data_ocorrencia_dict = ar_condicionado_inoperante_data_ocorrencia["past"]
+            else:
+                data_ocorrencia_dict = ar_condicionado_inoperante_data_ocorrencia
+
+            # Verificar se "startDateTime" e "endDateTime" estão presentes
+            if "startDateTime" in data_ocorrencia_dict and "endDateTime" in data_ocorrencia_dict:
+                start_datetime = data_ocorrencia_dict["startDateTime"]
+                end_datetime = data_ocorrencia_dict["endDateTime"]
+            elif "startDate" in data_ocorrencia_dict and "endDate" in data_ocorrencia_dict:
+                start_datetime = data_ocorrencia_dict["startDate"]
+                end_datetime = data_ocorrencia_dict["endDate"]
+            else:
+                # Se nenhum dos conjuntos de campos estiver presente, use o dicionário original
+                start_datetime = data_ocorrencia_dict
+                end_datetime = data_ocorrencia_dict
+
+            # Criar objetos de data e hora a partir dos dados do dicionário
+            start_dt = datetime(year=int(start_datetime["year"]),
+                                month=int(start_datetime["month"]),
+                                day=int(start_datetime["day"]),
+                                hour=int(start_datetime.get("hours", 0)),
+                                minute=int(start_datetime.get("minutes", 0)),
+                                second=int(start_datetime.get("seconds", 0)))
+
+            end_dt = datetime(year=int(end_datetime["year"]),
+                            month=int(end_datetime["month"]),
+                            day=int(end_datetime["day"]),
+                            hour=int(end_datetime.get("hours", 0)),
+                            minute=int(end_datetime.get("minutes", 0)),
+                            second=int(end_datetime.get("seconds", 0)))
+
+            # Calcular o ponto médio do intervalo
+            middle_dt = start_dt + (end_dt - start_dt) / 2
+
+            # Extrair a data e hora do ponto médio
+            data_ocorrencia = middle_dt.strftime("%d/%m/%Y")
+            hora_ocorrencia = middle_dt.strftime("%H:%M:%S")
+
+            # Imprimir as variáveis
+            logger.info(f"data_ocorrencia: {data_ocorrencia}")
+            logger.info(f"hora_ocorrencia: {hora_ocorrencia}")
+
+            numero_carro = parameters.get("ar_condicionado_inoperante_numero_onibus", None)
+
+            specific_attributes = {
+                "dataOcorrenc": data_ocorrencia,
+                "horOcorrenc": hora_ocorrencia,
+                "numelinhOnib": parameters["ar_condicionado_inoperante_numero_linha"],
+                "numCarro": numero_carro,
+            }
+            # Create new ticket
+            try:
+                logger.info("Serviço: Verificação de Ar Condicionado Inoperante em Ônibus")
+                logger.info("Endereço")
+                logger.info(address)                
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+                # Joins description
+                descricao_completa = parameters["servico_1746_descricao"]
+
+                ticket: NewTicket = new_ticket(
+                    address=address,
+                    classification_code=1464,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
+#############            
+########### 152 - Reparo de Luminária
+#############
+        elif str(codigo_servico_1746) == "152":
+            logger.info(parameters)
+
+             # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters[
+                    "logradouro_ponto_referencia_identificado"
+                ]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+            )
+
+            # Definindo parâmetros específicos do serviço
+            if parameters.get("reparo_luminaria_quadra_esportes", None) == 1.0 or parameters["reparo_luminaria_localizacao"] == "Quadra de esportes":
+                dentro_quadra_esporte = "1"
+            else:
+                dentro_quadra_esporte = "0"
+
+            if parameters.get("logradouro_indicador_praca", None) or parameters["reparo_luminaria_localizacao"] == "Praça":
+                esta_na_praca = "1"
+            else:
+                esta_na_praca = "0"
+
+            specific_attributes = {
+                "defeitoLuminaria": parameters["reparo_luminaria_defeito_classificado"],
+                "dentroQuadraEsporte": dentro_quadra_esporte,
+                "estaNaPraca": esta_na_praca,
+                "localizacaoLuminaria": parameters["reparo_luminaria_localizacao"],
+                "nomePraca": "",
+            }
+
+            # Complementa a descrição dependendo da localização da luminária
+            if parameters.get("logradouro_indicador_comunidade", None):
+                descricao_completa = f'{parameters["servico_1746_descricao"]}. Dados do condomínio: {parameters["reparo_luminaria_dados_comunidade"]}'
+            else:
+                descricao_completa = parameters["servico_1746_descricao"]
+
+            # Create new ticket
+            try:
+                logger.info("Serviço: Reparo de Luminária")
+                logger.info("Endereço")
+                logger.info(address)                
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+
+                ticket: NewTicket = new_ticket(
+                    address=address,
+                    classification_code=18131,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters            
         else:
             raise NotImplementedError("Classification code not implemented")
     except:  # noqa
@@ -302,40 +570,17 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
         parameters = request_data["sessionInfo"]["parameters"]
         message = ""
 
-        # Inicializa essa variável para a chave existir no dicionário
+        # Inicializa essas variáveis para as chaves existirem no dicionário
         parameters["logradouro_ponto_referencia_identificado"] = None
-        # Checa se o usuario informou o numero da rua
-        try:
-            parameters["logradouro_numero"]
-        except:  # noqa
-            logger.warning("Não foi informado um número de logradouro")
-            parameters["logradouro_numero"] = None
+        parameters["logradouro_numero"] = None
+        parameters["logradouro_ponto_referencia"] = None
 
-        # Checa se o usuario informou algum ponto de referencia
-        try:
-            parameters["logradouro_ponto_referencia"]
-        except:  # noqa
-            logger.warning("Não foi informado um ponto de referência")
-            parameters["logradouro_ponto_referencia"] = None
+        address_to_google = f"{parameters['logradouro_nome']}, Rio de Janeiro - RJ"  # noqa
+        logger.info(f'Input geolocator: "{address_to_google}"')
+        parameters["logradouro_indicador_validade"] = google_geolocator(
+            address_to_google, parameters
+        )
 
-        # Se existe numero, chama o geolocator
-        if parameters["logradouro_numero"]:
-            try:
-                parameters["logradouro_numero"] = str(parameters["logradouro_numero"]).split(".")[0]
-            except:  # noqa
-                pass
-            address_to_google = f"{parameters['logradouro_nome']['original']} {parameters['logradouro_numero']}, Rio de Janeiro - RJ"  # noqa
-            logger.info(f'Input geolocator: "{address_to_google}"')
-            parameters["logradouro_indicador_validade"] = google_geolocator(
-                address_to_google, parameters
-            )
-        # Se não existe, também chama o geolocator
-        else:
-            address_to_google = f"{parameters['logradouro_nome']['original']}, Rio de Janeiro - RJ"  # noqa
-            logger.info(f'Input geolocator: "{address_to_google}"')
-            parameters["logradouro_indicador_validade"] = google_geolocator(
-                address_to_google, parameters
-            )
         ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###    
         # # Se não existe, é porque existe ao menos um ponto de referencia, então chama o find_place
         # else:
@@ -573,11 +818,71 @@ def identifica_ambiente(request_data: dict) -> tuple[str, dict]:
 def contador_no_match(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
-    logger.info("ENTREI AQUI")
 
     if "contador_no_match" not in parameters:
         parameters["contador_no_match"] = 1
     else:
         parameters["contador_no_match"] += 1
+
+    return message, parameters
+
+def checa_endereco_especial(request_data: dict) -> tuple[str, dict]:
+    parameters = request_data["sessionInfo"]["parameters"]
+    message = ""
+
+    logradouro_nome = parameters["logradouro_nome"]
+    ponto_referencia = parameters.get("logradouro_ponto_referencia", None)
+    palavras_praca = ["praça", "praca", "largo"]
+    palavras_comunidade = ["condominio", "vila", "loteamento", "comunidade", "conjunto habitacional"]
+
+    # Remover acentos e transformar para minúsculas
+    logradouro_nome = unidecode(logradouro_nome).lower()
+    ponto_referencia = unidecode(ponto_referencia).lower() if ponto_referencia else ""
+
+    # Verificar se a string contém pelo menos uma das palavras-chave
+    if any(palavra in logradouro_nome for palavra in palavras_praca):
+        logger.info("Entendi que o local é uma praça ou próximo de uma")
+        parameters["logradouro_indicador_praca"] = True
+    else:
+        logger.info("O local não é uma praça.")
+
+    if any(palavra in logradouro_nome for palavra in palavras_comunidade) or any(palavra in ponto_referencia for palavra in palavras_comunidade):
+        logger.info("Entendi que o endereço é em uma comunidade ou similar.")
+        parameters["logradouro_indicador_comunidade"] = True
+    else:
+        logger.info("O endereço não fica em uma comunidade ou similar.")
+
+    parameters["reparo_luminaria_endereco_especial_executado"] = True
+
+    return message, parameters
+
+def rlu_classifica_defeito(request_data: dict) -> tuple[str, dict]:
+    parameters = request_data["sessionInfo"]["parameters"]
+    message = ""
+
+    mapeia_defeito = {
+        (1, "uma", None): "Apagada",
+        (1, "grupo", "bloco"): "Bloco ou grupo de luminárias apagadas",
+        (1, "grupo", "intercaladas"): "Várias luminárias intercaladas apagadas",
+        (2, "uma", None): "Piscando",
+        (2, "grupo", "bloco"): "Bloco ou grupo de luminárias piscando",
+        (2, "grupo", "intercaladas"): "Bloco ou grupo de luminárias piscando",
+        (3, "uma", None): "Acesa durante o dia",
+        (3, "grupo", "bloco"): "Bloco ou grupo de luminárias acesas de dia",
+        (3, "grupo", "intercaladas"): "Várias luminárias intercaladas acesas de dia",
+        (4, None, None): "Pendurada",
+        (5, None, None): "Danificada",
+        (6, None, None): "Com ruído",
+    }
+
+    defeito = int(parameters["reparo_luminaria_defeito"])
+    quantidade = parameters.get("reparo_luminaria_quantidade", None)
+    inter_ou_bloco = parameters.get("reparo_luminaria_intercaladas_bloco", None)
+    if inter_ou_bloco:
+        inter_ou_bloco = "bloco" if str(inter_ou_bloco) == "1.0" else "intercaladas"
+
+    logger.info(f"As seleções do usuário foram: {tuple([defeito, quantidade, inter_ou_bloco])}")
+    parameters["reparo_luminaria_defeito_classificado"] = mapeia_defeito[tuple([defeito, quantidade, inter_ou_bloco])]
+    logger.info(f"O defeito classificado foi: {parameters['reparo_luminaria_defeito_classificado']}")
 
     return message, parameters
