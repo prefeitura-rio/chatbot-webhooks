@@ -56,7 +56,7 @@ async def get_ipp_street_code(parameters: dict) -> dict:
                 "GET",
                 geocode_logradouro_ipp_url,
             ) as response:
-                data = await response.json()
+                data = await response.json(content_type="text/plain")
         try:
             candidates = list(data["candidates"])
             logradouro_google_completo = (
@@ -159,7 +159,7 @@ async def get_ipp_info(parameters: dict) -> bool:
             "GET",
             geocode_ipp_url,
         ) as response:
-            data = await response.json()
+            data = await response.json(content_type="text/plain")
 
     try:
         parameters["logradouro_id_ipp"] = str(data["address"]["CL"])
