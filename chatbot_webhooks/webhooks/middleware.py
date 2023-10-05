@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 from typing import Any, Dict, List
 
-from django.conf import settings
 from google.cloud import dialogflowcx_v3 as dialogflow
 
+from chatbot_webhooks import config
 from chatbot_webhooks.webhooks.utils import get_credentials_from_env
 
 
 def build_session_client(
-    project_id: str = settings.GCP_PROJECT_ID,
-    location_id: str = settings.DIALOGFLOW_LOCATION_ID,
-    agent_id: str = settings.DIALOGFLOW_AGENT_ID,
-    environment_id: str = settings.DIALOGFLOW_ENVIRONMENT_ID,
+    project_id: str = config.GCP_PROJECT_ID,
+    location_id: str = config.DIALOGFLOW_LOCATION_ID,
+    agent_id: str = config.DIALOGFLOW_AGENT_ID,
+    environment_id: str = config.DIALOGFLOW_ENVIRONMENT_ID,
 ) -> dialogflow.SessionsClient:
     project = f"projects/{project_id}"
     location = f"locations/{location_id}"
@@ -33,11 +33,11 @@ def build_session_client(
 def detect_intent_text(
     text: str,
     session_id: str,
-    project_id: str = settings.GCP_PROJECT_ID,
-    location_id: str = settings.DIALOGFLOW_LOCATION_ID,
-    agent_id: str = settings.DIALOGFLOW_AGENT_ID,
-    environment_id: str = settings.DIALOGFLOW_ENVIRONMENT_ID,
-    language_code: str = settings.DIALOGFLOW_LANGUAGE_CODE,
+    project_id: str = config.GCP_PROJECT_ID,
+    location_id: str = config.DIALOGFLOW_LOCATION_ID,
+    agent_id: str = config.DIALOGFLOW_AGENT_ID,
+    environment_id: str = config.DIALOGFLOW_ENVIRONMENT_ID,
+    language_code: str = config.DIALOGFLOW_LANGUAGE_CODE,
     session_client: dialogflow.SessionsClient = None,
     parameters: Dict[str, Any] = None,
 ) -> List[str]:
@@ -63,12 +63,8 @@ def detect_intent_text(
             session=session_path, query_input=query_input, query_params=query_params
         )
     else:
-        request = dialogflow.DetectIntentRequest(
-            session=session_path, query_input=query_input
-        )
+        request = dialogflow.DetectIntentRequest(session=session_path, query_input=query_input)
     response = session_client.detect_intent(request=request)
-    response_messages = [
-        " ".join(msg.text.text) for msg in response.query_result.response_messages
-    ]
+    response_messages = [" ".join(msg.text.text) for msg in response.query_result.response_messages]
     ret_messages = [msg for msg in response_messages if msg.strip() != ""]
     return ret_messages

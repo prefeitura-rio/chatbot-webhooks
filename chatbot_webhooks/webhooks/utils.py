@@ -1,39 +1,30 @@
 # -*- coding: utf-8 -*-
 import base64
-from datetime import datetime
 import json
-from pathlib import Path
 import re
 import time
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Union
 
-from django.conf import settings
-from django.http import HttpRequest, HttpResponse
 import geopandas as gpd
-from google.oauth2 import service_account
 import googlemaps
+import requests
+from google.oauth2 import service_account
 from jellyfish import jaro_similarity
 from loguru import logger
-from prefeitura_rio.integrations.sgrc import (
-    new_ticket as sgrc_new_ticket,
-    Address,
-    NewTicket,
-    Requester,
-)
+from prefeitura_rio.integrations.sgrc import Address, NewTicket, Requester
+from prefeitura_rio.integrations.sgrc import new_ticket as sgrc_new_ticket
 from shapely.geometry import Point
-import requests
 
-
-from chatbot_webhooks.webhooks.models import Token
+from chatbot_webhooks import config
 
 
 def get_ipp_street_code(parameters: dict) -> dict:
     THRESHOLD = 0.8
     logradouro_google = parameters["logradouro_nome"]
     logradouro_ipp = parameters["logradouro_nome_ipp"]
-    logradouro_google_completo = (
-        f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
-    )
+    logradouro_google_completo = f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
 
     # Corte a string para considerar apenas o nome da rua
     for i in range(0, len(logradouro_ipp)):
@@ -73,9 +64,7 @@ def get_ipp_street_code(parameters: dict) -> dict:
             logradouro_real = None
             best_similarity = 0
             for candidato in candidates:
-                similarity = jaro_similarity(
-                    candidato["address"], logradouro_google_completo
-                )
+                similarity = jaro_similarity(candidato["address"], logradouro_google_completo)
                 if similarity > best_similarity and "," in candidato["address"]:
                     best_similarity = similarity
                     logradouro_codigo = candidato["attributes"]["cl"]
@@ -92,16 +81,12 @@ def get_ipp_street_code(parameters: dict) -> dict:
             parameters["logradouro_nome_ipp"] = logradouro_real.split(",")[0]
             try:
                 best_candidate_bairro_nome_ipp = logradouro_real.split(",")[1][1:]
-            except:
-                logger.info(
-                    "Logradouro no IPP com maior semelhança não possui bairro no nome"
-                )
+            except:  # noqa: E722
+                logger.info("Logradouro no IPP com maior semelhança não possui bairro no nome")
                 parameters["logradouro_bairro_ipp"] = None
 
             if (
-                jaro_similarity(
-                    best_candidate_bairro_nome_ipp, parameters["logradouro_bairro_ipp"]
-                )
+                jaro_similarity(best_candidate_bairro_nome_ipp, parameters["logradouro_bairro_ipp"])
                 > THRESHOLD
             ):
                 logger.info(
@@ -119,7 +104,7 @@ def get_ipp_street_code(parameters: dict) -> dict:
 
                 payload = json.dumps({"name": best_candidate_bairro_nome_ipp})
 
-                key = settings.CHATBOT_INTEGRATIONS_KEY
+                key = config.CHATBOT_INTEGRATIONS_KEY
 
                 headers = {
                     "Content-Type": "application/json",
@@ -133,7 +118,7 @@ def get_ipp_street_code(parameters: dict) -> dict:
                 logger.info(
                     f'Bairro obtido agora com busca por similaridade: {parameters["logradouro_bairro_ipp"]}'
                 )
-        except:
+        except:  # noqa: E722
             logger.info("Correspondência não exata entre endereço no Google e no IPP")
             return parameters
 
@@ -149,41 +134,11 @@ def address_find_street_number(address: str) -> str:
     return lista_numeros[-1]
 
 
-def authentication_required(view_func):
-    """
-    A decorator that checks whether the request is authenticated. It does so by checking the
-    following conditions:
-    - The request has an Authorization header with a Bearer token in it, the token is valid and
-        the token is active.
-    """
-
-    def wrapper(request: HttpRequest, *args, **kwargs):
-        # Check if the Authorization header is present
-        if "Authorization" not in request.headers:
-            return HttpResponse(status=401)
-        # Check if the Authorization header has a Bearer token
-        auth_header = request.headers["Authorization"]
-        if not auth_header.startswith("Bearer "):
-            return HttpResponse(status=401)
-        # Check if the token is valid and active
-        token = auth_header.split(" ")[1]
-        try:
-            token_obj = Token.objects.get(token=token)
-        except Token.DoesNotExist:
-            return HttpResponse(status=401)
-        if not token_obj.is_active:
-            return HttpResponse(status=401)
-        # If all checks pass, call the view function
-        return view_func(request, *args, **kwargs)
-
-    return wrapper
-
-
 def get_credentials_from_env() -> service_account.Credentials:
     """
     Gets credentials from env vars
     """
-    info: dict = json.loads(base64.b64decode(settings.GCP_SERVICE_ACCOUNT))
+    info: dict = json.loads(base64.b64decode(config.GCP_SERVICE_ACCOUNT))
     return service_account.Credentials.from_service_account_info(info)
 
 
@@ -206,11 +161,9 @@ def get_ipp_info(parameters: dict) -> bool:
         parameters["logradouro_nome_ipp"] = str(data["address"]["ShortLabel"])
         parameters["logradouro_bairro_ipp"] = str(data["address"]["Neighborhood"])
 
-        logger.info(
-            f'Codigo bairro IPP obtido: {parameters["logradouro_id_bairro_ipp"]}'
-        )
+        logger.info(f'Codigo bairro IPP obtido: {parameters["logradouro_id_bairro_ipp"]}')
         logger.info(f'Nome bairro IPP obtido: {parameters["logradouro_bairro_ipp"]}')
-    except:
+    except:  # noqa: E722
         logger.info("Falha na API do IPP que identifica endereço através de lat/long.")
         logger.info("Retorno abaixo")
         logger.info(data)
@@ -235,7 +188,7 @@ def get_ipp_info(parameters: dict) -> bool:
                 }
             )
 
-            key = settings.CHATBOT_INTEGRATIONS_KEY
+            key = config.CHATBOT_INTEGRATIONS_KEY
 
             headers = {
                 "Content-Type": "application/json",
@@ -269,7 +222,7 @@ def get_integrations_url(endpoint: str) -> str:
     """
     Returns the URL of the endpoint in the integrations service.
     """
-    base_url = settings.CHATBOT_INTEGRATIONS_URL
+    base_url = config.CHATBOT_INTEGRATIONS_URL
     if base_url.endswith("/"):
         base_url = base_url[:-1]
     if endpoint.startswith("/"):
@@ -300,16 +253,14 @@ def get_user_info(cpf: str) -> dict:
             }
     """
     url = get_integrations_url("person")
-    key = settings.CHATBOT_INTEGRATIONS_KEY
+    key = config.CHATBOT_INTEGRATIONS_KEY
     payload = {"cpf": cpf}
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}",
     }
     try:
-        response = requests.request(
-            "POST", url, headers=headers, data=json.dumps(payload)
-        )
+        response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
         response.raise_for_status()
         data = response.json()
         return data
@@ -323,7 +274,7 @@ def google_find_place(address: str, parameters: dict) -> bool:
     Uses Google Maps API to get the formatted address using find_place and then call
     google_geolocator function
     """
-    client = googlemaps.Client(settings.GMAPS_API_TOKEN)
+    client = googlemaps.Client(config.GMAPS_API_TOKEN)
     find_place_result = client.find_place(
         address,
         "textquery",
@@ -333,16 +284,14 @@ def google_find_place(address: str, parameters: dict) -> bool:
     )
 
     if find_place_result["status"] == "OK":
-        parameters["logradouro_ponto_referencia_identificado"] = find_place_result[
-            "candidates"
-        ][0]["name"]
+        parameters["logradouro_ponto_referencia_identificado"] = find_place_result["candidates"][0][
+            "name"
+        ]
         logger.info("find_place OK")
         logger.info("FINDPLACE RESULT ABAIXO")
         logger.info(find_place_result)
         logger.info("-----")
-        if address_contains_street_number(
-            find_place_result["candidates"][0]["formatted_address"]
-        ):
+        if address_contains_street_number(find_place_result["candidates"][0]["formatted_address"]):
             logger.info("Contém número da rua")
             logger.info(
                 f'Input geolocator: "{find_place_result["candidates"][0]["formatted_address"]}"'
@@ -374,7 +323,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
         "point_of_interest",
     ]
 
-    client = googlemaps.Client(settings.GMAPS_API_TOKEN)
+    client = googlemaps.Client(config.GMAPS_API_TOKEN)
     geocode_result = client.geocode(address)
 
     logger.info("GEOCODE RESULT ABAIXO")
@@ -418,28 +367,28 @@ def google_geolocator(address: str, parameters: dict) -> bool:
 
     # Procure as outras informações nesse resultado que possui o nome do logradouro
     logger.info("Itens dentro desse resultado:")
-    google_found_number = False
-    google_found_zip_code = False
+    # google_found_number = False
+    # google_found_zip_code = False
     for item in resultado["address_components"]:
         logger.info(f'O item é "{item["long_name"]}"')
         logger.info(item["types"])
         if "street_number" in item["types"]:
-            google_found_number = True
+            # google_found_number = True
             parameters["logradouro_numero"] = item["long_name"]
         elif [i for i in ACCEPTED_LOGRADOUROS if i in item["types"]]:
             parameters["logradouro_nome"] = item["long_name"]
         elif "sublocality" in item["types"] or "sublocality_level_1" in item["types"]:
             parameters["logradouro_bairro"] = item["long_name"]
         elif "postal_code" in item["types"]:
-            google_found_zip_code = True
+            # google_found_zip_code = True
             parameters["logradouro_cep"] = item["long_name"]
         elif "administrative_area_level_2" in item["types"]:
             parameters["logradouro_cidade"] = item["long_name"]
         elif "administrative_area_level_1" in item["types"]:
             parameters["logradouro_estado"] = item["short_name"]
 
-    ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###
-    ## Como agora aceitamos só o nome da rua antes de geolocalizar, existem ruas com mais de um CEP ##
+    # VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO #
+    # Como agora aceitamos só o nome da rua antes de geolocalizar, existem ruas com mais de um CEP #
     # # If we don't find neither the number nor the zip code, we can't proceed
     # if not google_found_number and not google_found_zip_code:
     #     return False
@@ -457,9 +406,9 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     else:
         logger.info("Não foi identificado um município para esse endereço")
         t0 = time.time()
-        shape_rj = gpd.read_file(
-            Path(__file__).parent.parent.parent / "shape_rj.geojson"
-        ).iloc[0]["geometry"]
+        shape_rj = gpd.read_file(Path(__file__).parent.parent.parent / "shape_rj.geojson").iloc[0][
+            "geometry"
+        ]
         point = Point(
             float(parameters["logradouro_longitude"]),
             float(parameters["logradouro_latitude"]),
@@ -475,7 +424,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
             f"Demorou {int(time.time() - t0)} segundos para checar se o ponto está no shape. E está."
         )
 
-    ### VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO ###
+    # VERSÃO PONTO DE REFERÊNCIA EQUIVALENTE A NÚMERO #
     # # Caso já tenha sido identificado que existe numero de logradouro no endereço retornado pelo find_place, mas
     # # o geolocator não tenha conseguido retorná-lo, raspamos a string para achar esse número.
     # if "logradouro_numero_identificado_google" in parameters:
@@ -497,18 +446,14 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     return True
 
 
-def form_info_update(
-    parameter_list: list, parameter_name: str, parameter_value: any
-) -> list:
+def form_info_update(parameter_list: list, parameter_name: str, parameter_value: any) -> list:
     indice = -1
     for i in range(0, len(parameter_list)):
         if parameter_list[i]["displayName"] == parameter_name:
             indice = i
             break
     if indice == -1:
-        raise ValueError(
-            f"Parameter {parameter_name} was not found in form parameter list"
-        )
+        raise ValueError(f"Parameter {parameter_name} was not found in form parameter list")
     parameter_list[indice]["value"] = parameter_value
 
     return parameter_list
@@ -593,7 +538,7 @@ def new_ticket(
                 f"- Protocolo: {new_ticket.protocol_id}\n"
                 f"- Chamado: {new_ticket.ticket_id}"
             ),
-            webhook_url=settings.DISCORD_WEBHOOK_NEW_TICKET,
+            webhook_url=config.DISCORD_WEBHOOK_NEW_TICKET,
         )
         return new_ticket
     except Exception as exc:  # noqa
@@ -703,13 +648,11 @@ def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
     nome = parameters["usuario_nome_cadastrado"]
     try:
         nome_quebrado = nome.split(" ")
-        if len(nome_quebrado) > 2 or (
-            len(nome_quebrado) == 2 and nome_quebrado[-1] != ""
-        ):
+        if len(nome_quebrado) > 2 or (len(nome_quebrado) == 2 and nome_quebrado[-1] != ""):
             return True
         else:
             return False
-    except:
+    except:  # noqa: E722
         logger.info(
             f"Parâmetro usuario_nome_cadastrado tem valor: {nome} e tipo {type(nome)}. Não foi possível fazer a validação, logo, inválido."
         )
