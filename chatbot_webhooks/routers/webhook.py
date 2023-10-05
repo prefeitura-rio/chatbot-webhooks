@@ -45,7 +45,7 @@ async def webhook(request: Request) -> Response:
 
     # Call the webhook function
     try:
-        response: Union[str, Tuple[str, Dict[str, Any]]] = webhook_func(body)
+        response: Union[str, Tuple[str, Dict[str, Any]]] = await webhook_func(body)
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
         raise exc
