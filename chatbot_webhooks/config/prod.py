@@ -3,7 +3,11 @@ from . import getenv_list_or_action, getenv_or_action
 from .base import *  # noqa: F401, F403
 
 # Database configuration
-DATABASE_URL = getenv_or_action("DATABASE_URL", action="raise")
+DATABASE_HOST = getenv_or_action("DATABASE_HOST", action="raise")
+DATABASE_PORT = getenv_or_action("DATABASE_PORT", action="raise")
+DATABASE_USER = getenv_or_action("DATABASE_USER", action="raise")
+DATABASE_PASSWORD = getenv_or_action("DATABASE_PASSWORD", action="raise")
+DATABASE_NAME = getenv_or_action("DATABASE_NAME", action="raise")
 
 # CORS configuration
 ALLOWED_ORIGINS = getenv_list_or_action("ALLOWED_ORIGINS", action="ignore")
