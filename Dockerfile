@@ -16,15 +16,11 @@ ENV PYTHONUNBUFFERED 1
 RUN pip install --no-cache-dir -U poetry && \
     poetry config virtualenvs.create false
 
-# Copy the poetry.lock and pyproject.toml files
-# and install dependencies
-WORKDIR /tmp
-COPY poetry.lock pyproject.toml ./
-RUN poetry install --no-dev --no-interaction --no-ansi
-
 # Copy the project files into the working directory
+# and install dependencies
 WORKDIR /app
 COPY . .
+RUN poetry install --no-dev --no-interaction --no-ansi
 
 # Run the application
 CMD ["uvicorn", "chatbot_webhooks.main:app", "--host", "0.0.0.0", "--port", "80"]
