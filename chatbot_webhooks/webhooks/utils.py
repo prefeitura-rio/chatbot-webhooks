@@ -15,7 +15,7 @@ from google.oauth2 import service_account
 from jellyfish import jaro_similarity
 from loguru import logger
 from prefeitura_rio.integrations.sgrc import Address, NewTicket, Requester
-from prefeitura_rio.integrations.sgrc import new_ticket as sgrc_new_ticket
+from prefeitura_rio.integrations.sgrc import async_new_ticket as async_sgrc_new_ticket
 from shapely.geometry import Point
 
 from chatbot_webhooks import config
@@ -56,7 +56,7 @@ async def get_ipp_street_code(parameters: dict) -> dict:
                 "GET",
                 geocode_logradouro_ipp_url,
             ) as response:
-                data = response.json()
+                data = await response.json()
         try:
             candidates = list(data["candidates"])
             logradouro_google_completo = (
@@ -117,8 +117,8 @@ async def get_ipp_street_code(parameters: dict) -> dict:
                     async with session.request(
                         "POST", url, headers=headers, data=payload
                     ) as response:
-                        parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
-                        parameters["logradouro_bairro_ipp"] = response.json()["name"]
+                        parameters["logradouro_id_bairro_ipp"] = await response.json()["id"]
+                        parameters["logradouro_bairro_ipp"] = await response.json()["name"]
 
                 logger.info(
                     f'Bairro obtido agora com busca por similaridade: {parameters["logradouro_bairro_ipp"]}'
@@ -159,7 +159,7 @@ async def get_ipp_info(parameters: dict) -> bool:
             "GET",
             geocode_ipp_url,
         ) as response:
-            data = response.json()
+            data = await response.json()
 
     try:
         parameters["logradouro_id_ipp"] = str(data["address"]["CL"])
@@ -203,8 +203,8 @@ async def get_ipp_info(parameters: dict) -> bool:
 
             async with aiohttp.ClientSession() as session:
                 async with session.request("POST", url, headers=headers, data=payload) as response:
-                    parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
-                    parameters["logradouro_bairro_ipp"] = response.json()["name"]
+                    parameters["logradouro_id_bairro_ipp"] = await response.json()["id"]
+                    parameters["logradouro_bairro_ipp"] = await response.json()["name"]
 
             # Caso mesmo assim um bairro não tenha sido encontrado, define temporariamente um valor não nulo
             # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
@@ -271,8 +271,8 @@ async def get_user_info(cpf: str) -> dict:
             async with session.request(
                 "POST", url, headers=headers, data=json.dumps(payload)
             ) as response:
-                response.raise_for_status()
-                data = response.json()
+                await response.raise_for_status()
+                data = await response.json()
         return data
     except Exception as exc:  # noqa
         logger.error(exc)
@@ -539,7 +539,7 @@ async def new_ticket(
         ValueError: If any of the arguments is invalid.
     """
     try:
-        new_ticket: NewTicket = sgrc_new_ticket(
+        new_ticket: NewTicket = await async_sgrc_new_ticket(
             classification_code=classification_code,
             description=description,
             address=address,
@@ -578,7 +578,7 @@ async def send_discord_message(message: str, webhook_url: str) -> bool:
         data = {"content": message}
         async with aiohttp.ClientSession() as session:
             async with session.post(webhook_url, json=data) as response:
-                if response.status == 204:
+                if await response.status == 204:
                     return True
                 else:
                     return False

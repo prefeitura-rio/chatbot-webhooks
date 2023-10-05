@@ -9,7 +9,7 @@ packages = [{ include = "chatbot_webhooks" }]
 python = ">=3.10,<3.11"
 google-cloud-dialogflow-cx = "^1.23.0"
 loguru = "^0.7.2"
-prefeitura-rio = { version = "1.0.2", extras = ["sgrc"] }
+prefeitura-rio = {version = "1.1.0", extras = ["sgrc"]}
 requests = "^2.31.0"
 sentry-sdk = { version = "^1.26.0", extras = ["fastapi"] }
 jellyfish = "^1.0.0"

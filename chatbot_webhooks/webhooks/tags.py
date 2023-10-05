@@ -49,11 +49,11 @@ async def ai(request_data: dict) -> str:
             },
         ) as response:
             try:
-                response.raise_for_status()
+                await response.raise_for_status()
             except Exception as exc:
                 logger.error(f"Backend error: {exc}")
                 logger.error(f"Message: {response.text}")
-            response = response.json()
+            response = await response.json()
             logger.info(f"API response: {response}")
             return response["answer"]
 
