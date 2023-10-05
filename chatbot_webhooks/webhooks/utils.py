@@ -657,3 +657,52 @@ def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
             f"Parâmetro usuario_nome_cadastrado tem valor: {nome} e tipo {type(nome)}. Não foi possível fazer a validação, logo, inválido."
         )
         return False
+
+
+def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
+
+    # Pegando o token de autenticação
+    autenticacao = requests.post(
+        "http://10.2.223.161/api/security/token",
+        verify=False,
+        headers={"Host": "epgmhom.rio.rj.gov.br"},
+        data={
+            "grant_type": "password",
+            "Consumidor": "chatbot",
+            "ChaveAcesso": "7c2404d1-5f35-4411-a56b-8427f44b48e6",
+        },
+    )
+
+    token = f'Bearer {autenticacao.json()["access_token"]}'
+
+    # endpoint = v2/cdas/protestadas
+    # Fazer uma solicitação GET
+    resp = requests.post(
+        f"http://10.2.223.161/api/{endpoint}",
+        verify=False,
+        headers={"Host": "epgmhom.rio.rj.gov.br", "Authorization": token},
+        data=data,
+    )
+
+    # Imprimir o conteúdo das respostas
+    logger.info("Resposta da solicitação POST:")
+    logger.info(resp.json())
+
+    if resp.json()["success"]:
+        logger.info("A API retornou registros.")
+        return resp.json()["data"]
+    else:
+        logger.info(f'Algo deu errado durante a solicitação, segue justificativa: {resp.json()["data"][0]["value"]}')
+        motivos = []
+        for item in resp.json()["data"]:
+            motivos.append(item["value"])
+        return {"erro": True, "motivos": motivos}
+
+    # guias_protestadas = resp.json()["data"]
+
+    # for i, guia in enumerate(guias_protestadas):
+    #     print(i+1)
+    #     print(guia)
+    #     print("/n/n")
+
+    return
