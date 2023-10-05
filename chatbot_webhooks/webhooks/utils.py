@@ -660,7 +660,6 @@ def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
 
 
 def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
-
     # Pegando o token de autenticação
     autenticacao = requests.post(
         "http://10.2.223.161/api/security/token",
@@ -692,7 +691,9 @@ def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
         logger.info("A API retornou registros.")
         return resp.json()["data"]
     else:
-        logger.info(f'Algo deu errado durante a solicitação, segue justificativa: {resp.json()["data"][0]["value"]}')
+        logger.info(
+            f'Algo deu errado durante a solicitação, segue justificativa: {resp.json()["data"][0]["value"]}'
+        )
         motivos = []
         for item in resp.json()["data"]:
             motivos.append(item["value"])
