@@ -48,7 +48,8 @@ create-token = "python scripts/create_token.py"
 lint = "black . && isort . && flake8 ."
 make-migrations = "aerich migrate"
 migrate = "aerich upgrade"
-serve = "uvicorn chatbot_webhooks.main:app --reload --port 8001"
+ngrok = "ngrok http 8080"
+serve = "uvicorn chatbot_webhooks.main:app --reload --port 8080"
 
 [build-system]
 requires = ["poetry-core"]
