@@ -34,7 +34,7 @@ from chatbot_webhooks.webhooks.utils import (
 )
 
 
-def ai(request_data: dict) -> str:
+async def ai(request_data: dict) -> str:
     input_message: str = request_data["text"]
     response = requests.post(
         config.CHATBOT_LAB_API_URL,
@@ -57,7 +57,7 @@ def ai(request_data: dict) -> str:
     return response["answer"]
 
 
-def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
+async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
     try:
         parameters = request_data["sessionInfo"]["parameters"]
         message = ""
@@ -69,7 +69,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 
         # Get the correct string in both cases, when it was collected by dialogflow
         # and when it comes from api
-        if "usuario_nome_cadastrado" in parameters and validate_name(parameters):
+        if "usuario_nome_cadastrado" in parameters and await validate_name(parameters):
             if "original" in parameters["usuario_nome_cadastrado"]:
                 usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]["original"]
             else:
@@ -146,7 +146,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 # Joins description with reference point
                 descricao_completa = parameters["servico_1746_descricao"]
 
-                ticket: NewTicket = new_ticket(
+                ticket: NewTicket = await new_ticket(
                     classification_code=1647,
                     description=descricao_completa,
                     address=address,
@@ -243,7 +243,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 # Joins description with reference point
                 descricao_completa = parameters["servico_1746_descricao"]
 
-                ticket: NewTicket = new_ticket(
+                ticket: NewTicket = await new_ticket(
                     classification_code=1614,
                     description=descricao_completa,
                     address=address,
@@ -381,7 +381,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 # Joins description
                 descricao_completa = parameters["servico_1746_descricao"]
 
-                ticket: NewTicket = new_ticket(
+                ticket: NewTicket = await new_ticket(
                     address=address,
                     classification_code=1464,
                     description=descricao_completa,
@@ -516,7 +516,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.info(specific_attributes)
                 logger.info("--------------------")
 
-                ticket: NewTicket = new_ticket(
+                ticket: NewTicket = await new_ticket(
                     address=address,
                     classification_code=18131,
                     description=descricao_completa,
@@ -574,7 +574,7 @@ def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         return message, parameters
 
 
-def localizador(request_data: dict) -> Tuple[str, dict]:
+async def localizador(request_data: dict) -> Tuple[str, dict]:
     logger.info(request_data)
     try:
         parameters = request_data["sessionInfo"]["parameters"]
@@ -587,7 +587,7 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
 
         address_to_google = f"{parameters['logradouro_nome']}, Rio de Janeiro - RJ"  # noqa
         logger.info(f'Input geolocator: "{address_to_google}"')
-        parameters["logradouro_indicador_validade"] = google_geolocator(
+        parameters["logradouro_indicador_validade"] = await google_geolocator(
             address_to_google, parameters
         )
 
@@ -596,7 +596,7 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
         # else:
         #     address_to_google = f"{parameters['logradouro_nome']['original']}, {parameters['logradouro_ponto_referencia']}, Rio de Janeiro - RJ"  # noqa
         #     logger.info(f'Input find_place: "{address_to_google}"')
-        #     parameters["logradouro_indicador_validade"] = google_find_place(
+        #     parameters["logradouro_indicador_validade"] = await google_find_place(
         #         address_to_google, parameters
         #     )
 
@@ -609,11 +609,11 @@ def localizador(request_data: dict) -> Tuple[str, dict]:
     return message, parameters
 
 
-def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
+async def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
 
-    get_ipp_info(parameters)
+    await get_ipp_info(parameters)
 
     # Se ao final de todo o processo não foi possível identificar logradouro_id e
     # logradouro_id_bairro válidos na base do IPP, não podemos seguir
@@ -691,32 +691,32 @@ def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     return message, parameters
 
 
-def validador_cpf(request_data: dict) -> tuple[str, dict, list]:
+async def validador_cpf(request_data: dict) -> tuple[str, dict, list]:
     parameters = request_data["sessionInfo"]["parameters"]
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
 
-    parameters["usuario_cpf_valido"] = validate_CPF(parameters)
+    parameters["usuario_cpf_valido"] = await validate_CPF(parameters)
 
     return message, parameters  # , form_parameters_list
 
 
-def validador_email(request_data: dict) -> tuple[str, dict, list]:
+async def validador_email(request_data: dict) -> tuple[str, dict, list]:
     parameters = request_data["sessionInfo"]["parameters"]
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
 
-    parameters["usuario_email_valido"] = validate_email(parameters)
+    parameters["usuario_email_valido"] = await validate_email(parameters)
 
     return message, parameters  # , form_parameters_list
 
 
-def validador_nome(request_data: dict) -> tuple[str, dict, list]:
+async def validador_nome(request_data: dict) -> tuple[str, dict, list]:
     parameters = request_data["sessionInfo"]["parameters"]
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
 
-    parameters["usuario_nome_valido"] = validate_name(parameters)
+    parameters["usuario_nome_valido"] = await validate_name(parameters)
 
     # if not parameters["usuario_nome_valido"]:
     #     message += 'Desculpe, não consegui entender.\n\nVerifique se o nome digitado contém nome e sobrenome e tente novamente.\n\nCaso não queira se identificar, digite "avançar".'
@@ -724,7 +724,7 @@ def validador_nome(request_data: dict) -> tuple[str, dict, list]:
     return message, parameters  # , form_parameters_list
 
 
-def confirma_email(request_data: dict) -> tuple[str, dict]:
+async def confirma_email(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
     cpf = parameters["usuario_cpf"]
@@ -732,7 +732,7 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
     logger.info(f"Email informado pelo usuário: {email_dialogflow}")
     try:
         logger.info(f"Buscando informações do usuário no SGRC com CPF {cpf}")
-        user_info = get_user_info(cpf)
+        user_info = await get_user_info(cpf)
     except:  # noqa
         logger.error(f"Erro ao buscar informações do usuário no SGRC com CPF {cpf}")
         parameters["usuario_email_confirmado"] = True
@@ -757,7 +757,7 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
         parameters["usuario_nome_cadastrado"] = nome_sgrc
         parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     else:
-        masked_email = mask_email(email_sgrc)
+        masked_email = await mask_email(email_sgrc)
         logger.info(f"E-mail mascarado: {masked_email}")
         parameters["usuario_email_confirmado"] = False
         parameters["usuario_email_cadastrado"] = masked_email
@@ -766,7 +766,7 @@ def confirma_email(request_data: dict) -> tuple[str, dict]:
     return message, parameters
 
 
-def define_variavel_ultima_mensagem(request_data: dict) -> tuple[str, dict]:
+async def define_variavel_ultima_mensagem(request_data: dict) -> tuple[str, dict]:
     # logger.info(request_data)
     parameters = request_data["sessionInfo"]["parameters"]
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
@@ -786,7 +786,7 @@ def define_variavel_ultima_mensagem(request_data: dict) -> tuple[str, dict]:
     return message, parameters
 
 
-def reseta_parametros(request_data: dict) -> tuple[str, dict]:
+async def reseta_parametros(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
 
@@ -796,7 +796,7 @@ def reseta_parametros(request_data: dict) -> tuple[str, dict]:
     return message, parameters
 
 
-def identifica_ambiente(request_data: dict) -> tuple[str, dict]:
+async def identifica_ambiente(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
 
@@ -805,7 +805,7 @@ def identifica_ambiente(request_data: dict) -> tuple[str, dict]:
     return message, parameters
 
 
-def contador_no_match(request_data: dict) -> tuple[str, dict]:
+async def contador_no_match(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
 
@@ -817,7 +817,7 @@ def contador_no_match(request_data: dict) -> tuple[str, dict]:
     return message, parameters
 
 
-def checa_endereco_especial(request_data: dict) -> tuple[str, dict]:
+async def checa_endereco_especial(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
 
@@ -856,7 +856,7 @@ def checa_endereco_especial(request_data: dict) -> tuple[str, dict]:
     return message, parameters
 
 
-def rlu_classifica_defeito(request_data: dict) -> tuple[str, dict]:
+async def rlu_classifica_defeito(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
 
@@ -892,7 +892,7 @@ def rlu_classifica_defeito(request_data: dict) -> tuple[str, dict]:
     return message, parameters
 
 
-def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
+async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
 
@@ -909,7 +909,7 @@ def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
         ],
     }
 
-    registros = pgm_api(endpoint="v2/cdas/protestadas", data=parametros_entrada)
+    registros = await pgm_api(endpoint="v2/cdas/protestadas", data=parametros_entrada)
 
     if "erro" in registros:
         parameters["api_resposta_sucesso"] = False

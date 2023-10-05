@@ -140,7 +140,7 @@ async def input_telegram(request: Request) -> Response:
 
     # Get the answer from Dialogflow CX
     try:
-        answer_messages: List[str] = detect_intent_text(text=message, session_id=session_id)
+        answer_messages: List[str] = await detect_intent_text(text=message, session_id=session_id)
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
         raise exc

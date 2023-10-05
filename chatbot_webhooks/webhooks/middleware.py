@@ -7,7 +7,7 @@ from chatbot_webhooks import config
 from chatbot_webhooks.webhooks.utils import get_credentials_from_env
 
 
-def build_session_client(
+async def build_session_client(
     project_id: str = config.GCP_PROJECT_ID,
     location_id: str = config.DIALOGFLOW_LOCATION_ID,
     agent_id: str = config.DIALOGFLOW_AGENT_ID,
@@ -26,11 +26,11 @@ def build_session_client(
         api_endpoint = f"{location_id}-dialogflow.googleapis.com:443"
         client_options = {"api_endpoint": api_endpoint}
     return dialogflow.SessionsClient(
-        client_options=client_options, credentials=get_credentials_from_env()
+        client_options=client_options, credentials=await get_credentials_from_env()
     )
 
 
-def detect_intent_text(
+async def detect_intent_text(
     text: str,
     session_id: str,
     project_id: str = config.GCP_PROJECT_ID,
@@ -42,7 +42,7 @@ def detect_intent_text(
     parameters: Dict[str, Any] = None,
 ) -> List[str]:
     if session_client is None:
-        session_client = build_session_client(
+        session_client = await build_session_client(
             project_id=project_id,
             location_id=location_id,
             agent_id=agent_id,

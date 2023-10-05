@@ -20,7 +20,7 @@ from shapely.geometry import Point
 from chatbot_webhooks import config
 
 
-def get_ipp_street_code(parameters: dict) -> dict:
+async def get_ipp_street_code(parameters: dict) -> dict:
     THRESHOLD = 0.8
     logradouro_google = parameters["logradouro_nome"]
     logradouro_ipp = parameters["logradouro_nome_ipp"]
@@ -100,7 +100,7 @@ def get_ipp_street_code(parameters: dict) -> dict:
                 logger.info(
                     f'Bairro obtido anteriormente com geolocalização: {parameters["logradouro_bairro_ipp"]}'
                 )
-                url = get_integrations_url("neighborhood_id")
+                url = await get_integrations_url("neighborhood_id")
 
                 payload = json.dumps({"name": best_candidate_bairro_nome_ipp})
 
@@ -123,18 +123,18 @@ def get_ipp_street_code(parameters: dict) -> dict:
             return parameters
 
 
-def address_contains_street_number(address: str) -> bool:
+async def address_contains_street_number(address: str) -> bool:
     left_text = address.partition("Rio de Janeiro - RJ")[0]
     return bool(re.search(r"\d", left_text))
 
 
-def address_find_street_number(address: str) -> str:
+async def address_find_street_number(address: str) -> str:
     left_text = address.partition("Rio de Janeiro - RJ")[0]
     lista_numeros = re.findall(r"\d+", left_text)
     return lista_numeros[-1]
 
 
-def get_credentials_from_env() -> service_account.Credentials:
+async def get_credentials_from_env() -> service_account.Credentials:
     """
     Gets credentials from env vars
     """
@@ -142,7 +142,7 @@ def get_credentials_from_env() -> service_account.Credentials:
     return service_account.Credentials.from_service_account_info(info)
 
 
-def get_ipp_info(parameters: dict) -> bool:
+async def get_ipp_info(parameters: dict) -> bool:
     geocode_ipp_url = str(
         "https://pgeo3.rio.rj.gov.br/arcgis/rest/services/Geocode/Geocode_Logradouros_WGS84/GeocodeServer/reverseGeocode?"  # noqa
         + f'location={parameters["logradouro_longitude"]}%2C{parameters["logradouro_latitude"]}'
@@ -178,7 +178,7 @@ def get_ipp_info(parameters: dict) -> bool:
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
         if parameters["logradouro_id_bairro_ipp"] == "0":
-            url = get_integrations_url("neighborhood_id")
+            url = await get_integrations_url("neighborhood_id")
 
             payload = json.dumps(
                 {
@@ -207,7 +207,7 @@ def get_ipp_info(parameters: dict) -> bool:
         # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
         # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o
         # logradouro_id_ipp pelo correspondente ao novo logradouro mais similar ao do Google
-        parameters = get_ipp_street_code(parameters)
+        parameters = await get_ipp_street_code(parameters)
 
         return True
     except:  # noqa
@@ -218,7 +218,7 @@ def get_ipp_info(parameters: dict) -> bool:
         return False
 
 
-def get_integrations_url(endpoint: str) -> str:
+async def get_integrations_url(endpoint: str) -> str:
     """
     Returns the URL of the endpoint in the integrations service.
     """
@@ -233,7 +233,7 @@ def get_integrations_url(endpoint: str) -> str:
     return f"{base_url}/{endpoint}"
 
 
-def get_user_info(cpf: str) -> dict:
+async def get_user_info(cpf: str) -> dict:
     """
     Returns user info from CPF.
 
@@ -252,7 +252,7 @@ def get_user_info(cpf: str) -> dict:
                 ],
             }
     """
-    url = get_integrations_url("person")
+    url = await get_integrations_url("person")
     key = config.CHATBOT_INTEGRATIONS_KEY
     payload = {"cpf": cpf}
     headers = {
@@ -269,7 +269,7 @@ def get_user_info(cpf: str) -> dict:
         raise Exception(f"Failed to get user info: {exc}") from exc
 
 
-def google_find_place(address: str, parameters: dict) -> bool:
+async def google_find_place(address: str, parameters: dict) -> bool:
     """
     Uses Google Maps API to get the formatted address using find_place and then call
     google_geolocator function
@@ -291,13 +291,15 @@ def google_find_place(address: str, parameters: dict) -> bool:
         logger.info("FINDPLACE RESULT ABAIXO")
         logger.info(find_place_result)
         logger.info("-----")
-        if address_contains_street_number(find_place_result["candidates"][0]["formatted_address"]):
+        if await address_contains_street_number(
+            find_place_result["candidates"][0]["formatted_address"]
+        ):
             logger.info("Contém número da rua")
             logger.info(
                 f'Input geolocator: "{find_place_result["candidates"][0]["formatted_address"]}"'
             )
             parameters["logradouro_numero_identificado_google"] = True
-            return google_geolocator(
+            return await google_geolocator(
                 find_place_result["candidates"][0]["formatted_address"], parameters
             )
         else:
@@ -305,13 +307,13 @@ def google_find_place(address: str, parameters: dict) -> bool:
             parameters["logradouro_numero_identificado_google"] = False
             endereco_completo = f"{find_place_result['candidates'][0]['name']}, {find_place_result['candidates'][0]['formatted_address']}"  # noqa
             logger.info(f'Input geolocator: "{endereco_completo}"')
-            return google_geolocator(endereco_completo, parameters)
+            return await google_geolocator(endereco_completo, parameters)
     else:
         logger.warning("find_place NOT OK")
         return False
 
 
-def google_geolocator(address: str, parameters: dict) -> bool:
+async def google_geolocator(address: str, parameters: dict) -> bool:
     """
     Uses Google Maps API to get the formatted address using geocode
     """
@@ -432,7 +434,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     #         parameters["logradouro_numero_identificado_google"]
     #         and not parameters["logradouro_numero"]
     #     ):
-    #         parameters["logradouro_numero"] = address_find_street_number(address)
+    #         parameters["logradouro_numero"] = await address_find_street_number(address)
     #     parameters["logradouro_numero_identificado_google"] = None
     # else:
     #     pass
@@ -446,7 +448,7 @@ def google_geolocator(address: str, parameters: dict) -> bool:
     return True
 
 
-def form_info_update(parameter_list: list, parameter_name: str, parameter_value: any) -> list:
+async def form_info_update(parameter_list: list, parameter_name: str, parameter_value: any) -> list:
     indice = -1
     for i in range(0, len(parameter_list)):
         if parameter_list[i]["displayName"] == parameter_name:
@@ -459,7 +461,7 @@ def form_info_update(parameter_list: list, parameter_name: str, parameter_value:
     return parameter_list
 
 
-def mask_email(email: str, mask_chacacter: str = "x") -> str:
+async def mask_email(email: str, mask_chacacter: str = "x") -> str:
     """
     Mascara um e-mail para proteção do dado pessoal.
 
@@ -485,7 +487,7 @@ def mask_email(email: str, mask_chacacter: str = "x") -> str:
     return f"{username}@{domain}"
 
 
-def new_ticket(
+async def new_ticket(
     classification_code: str,
     description: str,
     address: Address = None,
@@ -532,7 +534,7 @@ def new_ticket(
             occurrence_origin_code=occurrence_origin_code,
             specific_attributes=specific_attributes,
         )
-        send_discord_message(
+        await send_discord_message(
             message=(
                 "Novo chamado criado:\n"
                 f"- Protocolo: {new_ticket.protocol_id}\n"
@@ -545,7 +547,7 @@ def new_ticket(
         raise exc
 
 
-def send_discord_message(message: str, webhook_url: str) -> bool:
+async def send_discord_message(message: str, webhook_url: str) -> bool:
     """
     Envia uma mensagem para um canal do Discord através de um webhook.
 
@@ -570,7 +572,7 @@ def send_discord_message(message: str, webhook_url: str) -> bool:
         return False
 
 
-def validate_CPF(parameters: dict, form_parameters_list: list = []) -> bool:
+async def validate_CPF(parameters: dict, form_parameters_list: list = []) -> bool:
     """Efetua a validação do CPF, tanto formatação quando dígito verificadores.
 
     Parâmetros:
@@ -616,14 +618,14 @@ def validate_CPF(parameters: dict, form_parameters_list: list = []) -> bool:
 
     cpf_formatado = "".join([str(item) for item in numbers])
     parameters["usuario_cpf"] = cpf_formatado
-    # form_parameters_list = form_info_update(
+    # form_parameters_list = await form_info_update(
     #     form_parameters_list, "usuario_cpf", cpf_formatado
     # )
 
     return True
 
 
-def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
+async def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
     """
     Valida se a escrita do email está correta ou não,
     i.e., se está conforme o padrão dos nomes de email e
@@ -637,7 +639,7 @@ def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
     return re.match(regex, email) is not None
 
 
-def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
+async def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
     """
     Valida se a string informada tem nome e sobrenome,
     ou seja, possui um espaço (' ') no meio da string.
@@ -659,7 +661,7 @@ def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
         return False
 
 
-def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
+async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     # Pegando o token de autenticação
     autenticacao = requests.post(
         "http://10.2.223.161/api/security/token",
