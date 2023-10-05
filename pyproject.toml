@@ -22,6 +22,7 @@ infisical = "^1.5.0"
 tortoise-orm = { version = "0.19.3", extras = ["asyncpg"] }
 aiohttp = "^3.8.5"
 async-googlemaps = "^0.0.10"
+googlemaps = "^4.10.0"
 
 
 [tool.poetry.group.dev.dependencies]
