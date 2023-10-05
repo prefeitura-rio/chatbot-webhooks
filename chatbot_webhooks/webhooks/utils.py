@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import aiohttp
 import base64
 import json
 import re
@@ -8,9 +7,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Union
 
-from async_googlemaps import AsyncClient
+import aiohttp
 import geopandas as gpd
 import requests
+from async_googlemaps import AsyncClient
 from google.oauth2 import service_account
 from jellyfish import jaro_similarity
 from loguru import logger
