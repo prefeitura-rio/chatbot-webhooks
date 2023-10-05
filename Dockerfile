@@ -23,4 +23,4 @@ COPY . .
 RUN poetry install --no-dev --no-interaction --no-ansi
 
 # Run the application
-CMD ["uvicorn", "chatbot_webhooks.main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "10"]
+CMD ["uvicorn", "chatbot_webhooks.main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2"]

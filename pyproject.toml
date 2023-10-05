@@ -49,7 +49,7 @@ lint = "black . && isort . && flake8 ."
 make-migrations = "aerich migrate"
 migrate = "aerich upgrade"
 ngrok = "ngrok http 8080"
-serve = "uvicorn chatbot_webhooks.main:app --reload --port 8080 --workers 3"
+serve = "uvicorn chatbot_webhooks.main:app --reload --port 8080 --workers 2"
 
 [build-system]
 requires = ["poetry-core"]
