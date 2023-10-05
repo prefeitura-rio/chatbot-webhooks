@@ -24,7 +24,6 @@ DIALOGFLOW_LOCATION_ID = getenv_or_action("DIALOGFLOW_LOCATION_ID", action="warn
 DIALOGFLOW_AGENT_ID = getenv_or_action("DIALOGFLOW_AGENT_ID", action="warn")
 DIALOGFLOW_ENVIRONMENT_ID = getenv_or_action("DIALOGFLOW_ENVIRONMENT_ID", action="warn")
 DIALOGFLOW_LANGUAGE_CODE = getenv_or_action("DIALOGFLOW_LANGUAGE_CODE", action="warn")
-SENTRY_ENVIRONMENT = getenv_or_action("SENTRY_ENVIRONMENT", action="warn")
 SIGNATURE_BUTTONS_MESSAGE = "BUTTONOPTIONS:"
 # Google Maps API
 GMAPS_API_TOKEN = getenv_or_action("GMAPS_API_TOKEN", action="warn")
