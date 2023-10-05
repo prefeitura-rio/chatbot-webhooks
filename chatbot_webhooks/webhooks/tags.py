@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Tuple
 
-import requests
+import aiohttp
 from loguru import logger
 from prefeitura_rio.integrations.sgrc.exceptions import (
     SGRCBusinessRuleException,
@@ -36,25 +36,26 @@ from chatbot_webhooks.webhooks.utils import (
 
 async def ai(request_data: dict) -> str:
     input_message: str = request_data["text"]
-    response = requests.post(
-        config.CHATBOT_LAB_API_URL,
-        headers={
-            "Authorization": f"Bearer {config.CHATBOT_LAB_API_KEY}",
-        },
-        json={
-            "message": input_message,
-            "chat_session_id": "e23bdc43-bb26-4273-a187-e3e23836e0c2",
-            "contexts": ["cariocadigital"],
-        },
-    )
-    try:
-        response.raise_for_status()
-    except Exception as exc:
-        logger.error(f"Backend error: {exc}")
-        logger.error(f"Message: {response.text}")
-    response = response.json()
-    logger.info(f"API response: {response}")
-    return response["answer"]
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            config.CHATBOT_LAB_API_URL,
+            headers={
+                "Authorization": f"Bearer {config.CHATBOT_LAB_API_KEY}",
+            },
+            json={
+                "message": input_message,
+                "chat_session_id": "e23bdc43-bb26-4273-a187-e3e23836e0c2",
+                "contexts": ["cariocadigital"],
+            },
+        ) as response:
+            try:
+                response.raise_for_status()
+            except Exception as exc:
+                logger.error(f"Backend error: {exc}")
+                logger.error(f"Message: {response.text}")
+            response = response.json()
+            logger.info(f"API response: {response}")
+            return response["answer"]
 
 
 async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
@@ -69,7 +70,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 
         # Get the correct string in both cases, when it was collected by dialogflow
         # and when it comes from api
-        if "usuario_nome_cadastrado" in parameters and await validate_name(parameters):
+        if "usuario_nome_cadastrado" in parameters and validate_name(parameters):
             if "original" in parameters["usuario_nome_cadastrado"]:
                 usuario_nome_cadastrado = parameters["usuario_nome_cadastrado"]["original"]
             else:
@@ -696,7 +697,7 @@ async def validador_cpf(request_data: dict) -> tuple[str, dict, list]:
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
 
-    parameters["usuario_cpf_valido"] = await validate_CPF(parameters)
+    parameters["usuario_cpf_valido"] = validate_CPF(parameters)
 
     return message, parameters  # , form_parameters_list
 
@@ -706,7 +707,7 @@ async def validador_email(request_data: dict) -> tuple[str, dict, list]:
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
 
-    parameters["usuario_email_valido"] = await validate_email(parameters)
+    parameters["usuario_email_valido"] = validate_email(parameters)
 
     return message, parameters  # , form_parameters_list
 
@@ -716,7 +717,7 @@ async def validador_nome(request_data: dict) -> tuple[str, dict, list]:
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]
     message = ""
 
-    parameters["usuario_nome_valido"] = await validate_name(parameters)
+    parameters["usuario_nome_valido"] = validate_name(parameters)
 
     # if not parameters["usuario_nome_valido"]:
     #     message += 'Desculpe, não consegui entender.\n\nVerifique se o nome digitado contém nome e sobrenome e tente novamente.\n\nCaso não queira se identificar, digite "avançar".'
@@ -757,7 +758,7 @@ async def confirma_email(request_data: dict) -> tuple[str, dict]:
         parameters["usuario_nome_cadastrado"] = nome_sgrc
         parameters["usuario_telefone_cadastrado"] = telefone_sgrc
     else:
-        masked_email = await mask_email(email_sgrc)
+        masked_email = mask_email(email_sgrc)
         logger.info(f"E-mail mascarado: {masked_email}")
         parameters["usuario_email_confirmado"] = False
         parameters["usuario_email_cadastrado"] = masked_email

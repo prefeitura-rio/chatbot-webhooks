@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import aiohttp
 import base64
 import json
 import re
@@ -7,8 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Union
 
+from async_googlemaps import AsyncClient
 import geopandas as gpd
-import googlemaps
 import requests
 from google.oauth2 import service_account
 from jellyfish import jaro_similarity
@@ -50,11 +51,12 @@ async def get_ipp_street_code(parameters: dict) -> dict:
         )
         logger.info(f"Geocode IPP URL: {geocode_logradouro_ipp_url}")
 
-        response = requests.request(
-            "GET",
-            geocode_logradouro_ipp_url,
-        )
-        data = response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                "GET",
+                geocode_logradouro_ipp_url,
+            ) as response:
+                data = response.json()
         try:
             candidates = list(data["candidates"])
             logradouro_google_completo = (
@@ -100,7 +102,7 @@ async def get_ipp_street_code(parameters: dict) -> dict:
                 logger.info(
                     f'Bairro obtido anteriormente com geolocalização: {parameters["logradouro_bairro_ipp"]}'
                 )
-                url = await get_integrations_url("neighborhood_id")
+                url = get_integrations_url("neighborhood_id")
 
                 payload = json.dumps({"name": best_candidate_bairro_nome_ipp})
 
@@ -111,9 +113,12 @@ async def get_ipp_street_code(parameters: dict) -> dict:
                     "Authorization": f"Bearer {key}",
                 }
 
-                response = requests.request("POST", url, headers=headers, data=payload)
-                parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
-                parameters["logradouro_bairro_ipp"] = response.json()["name"]
+                async with aiohttp.ClientSession() as session:
+                    async with session.request(
+                        "POST", url, headers=headers, data=payload
+                    ) as response:
+                        parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
+                        parameters["logradouro_bairro_ipp"] = response.json()["name"]
 
                 logger.info(
                     f'Bairro obtido agora com busca por similaridade: {parameters["logradouro_bairro_ipp"]}'
@@ -149,11 +154,12 @@ async def get_ipp_info(parameters: dict) -> bool:
         + "&langCode=&locationType=&featureTypes=&outSR=&preferredLabelValues=&f=pjson"
     )
 
-    response = requests.request(
-        "GET",
-        geocode_ipp_url,
-    )
-    data = response.json()
+    async with aiohttp.ClientSession() as session:
+        async with session.request(
+            "GET",
+            geocode_ipp_url,
+        ) as response:
+            data = response.json()
 
     try:
         parameters["logradouro_id_ipp"] = str(data["address"]["CL"])
@@ -178,7 +184,7 @@ async def get_ipp_info(parameters: dict) -> bool:
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
         if parameters["logradouro_id_bairro_ipp"] == "0":
-            url = await get_integrations_url("neighborhood_id")
+            url = get_integrations_url("neighborhood_id")
 
             payload = json.dumps(
                 {
@@ -195,9 +201,10 @@ async def get_ipp_info(parameters: dict) -> bool:
                 "Authorization": f"Bearer {key}",
             }
 
-            response = requests.request("POST", url, headers=headers, data=payload)
-            parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
-            parameters["logradouro_bairro_ipp"] = response.json()["name"]
+            async with aiohttp.ClientSession() as session:
+                async with session.request("POST", url, headers=headers, data=payload) as response:
+                    parameters["logradouro_id_bairro_ipp"] = response.json()["id"]
+                    parameters["logradouro_bairro_ipp"] = response.json()["name"]
 
             # Caso mesmo assim um bairro não tenha sido encontrado, define temporariamente um valor não nulo
             # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
@@ -218,7 +225,7 @@ async def get_ipp_info(parameters: dict) -> bool:
         return False
 
 
-async def get_integrations_url(endpoint: str) -> str:
+def get_integrations_url(endpoint: str) -> str:
     """
     Returns the URL of the endpoint in the integrations service.
     """
@@ -252,7 +259,7 @@ async def get_user_info(cpf: str) -> dict:
                 ],
             }
     """
-    url = await get_integrations_url("person")
+    url = get_integrations_url("person")
     key = config.CHATBOT_INTEGRATIONS_KEY
     payload = {"cpf": cpf}
     headers = {
@@ -260,9 +267,12 @@ async def get_user_info(cpf: str) -> dict:
         "Authorization": f"Bearer {key}",
     }
     try:
-        response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
-        response.raise_for_status()
-        data = response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                "POST", url, headers=headers, data=json.dumps(payload)
+            ) as response:
+                response.raise_for_status()
+                data = response.json()
         return data
     except Exception as exc:  # noqa
         logger.error(exc)
@@ -274,14 +284,15 @@ async def google_find_place(address: str, parameters: dict) -> bool:
     Uses Google Maps API to get the formatted address using find_place and then call
     google_geolocator function
     """
-    client = googlemaps.Client(config.GMAPS_API_TOKEN)
-    find_place_result = client.find_place(
-        address,
-        "textquery",
-        fields=["formatted_address", "name"],
-        location_bias="rectangle:-22.74744540190159, -43.098580713057416|-23.100575987851833, -43.79779077663037",  # noqa
-        language="pt",
-    )
+    async with aiohttp.ClientSession() as maps_session:
+        client = AsyncClient(maps_session, key=config.GMAPS_API_TOKEN)
+        find_place_result = await client.find_place(
+            address,
+            "textquery",
+            fields=["formatted_address", "name"],
+            location_bias="rectangle:-22.74744540190159, -43.098580713057416|-23.100575987851833, -43.79779077663037",  # noqa
+            language="pt",
+        )
 
     if find_place_result["status"] == "OK":
         parameters["logradouro_ponto_referencia_identificado"] = find_place_result["candidates"][0][
@@ -325,8 +336,9 @@ async def google_geolocator(address: str, parameters: dict) -> bool:
         "point_of_interest",
     ]
 
-    client = googlemaps.Client(config.GMAPS_API_TOKEN)
-    geocode_result = client.geocode(address)
+    async with aiohttp.ClientSession() as maps_session:
+        client = AsyncClient(maps_session, key=config.GMAPS_API_TOKEN)
+        geocode_result = await client.geocode(address)
 
     logger.info("GEOCODE RESULT ABAIXO")
     logger.info(geocode_result)
@@ -343,7 +355,9 @@ async def google_geolocator(address: str, parameters: dict) -> bool:
         logger.info("no geocode result")
         lat = geocode_result[0]["geometry"]["location"]["lat"]
         lng = geocode_result[0]["geometry"]["location"]["lng"]
-        geocode_result = client.reverse_geocode((lat, lng))
+        async with aiohttp.ClientSession() as maps_session:
+            client = AsyncClient(maps_session, key=config.GMAPS_API_TOKEN)
+            geocode_result = await client.reverse_geocode((lat, lng))
 
     # Ache o primeiro resultado que possui o nome do logradouro
     nome_logradouro_encontrado = False
@@ -461,7 +475,7 @@ async def form_info_update(parameter_list: list, parameter_name: str, parameter_
     return parameter_list
 
 
-async def mask_email(email: str, mask_chacacter: str = "x") -> str:
+def mask_email(email: str, mask_chacacter: str = "x") -> str:
     """
     Mascara um e-mail para proteção do dado pessoal.
 
@@ -562,17 +576,18 @@ async def send_discord_message(message: str, webhook_url: str) -> bool:
     """
     try:
         data = {"content": message}
-        response = requests.post(webhook_url, json=data)
-        if response.status_code == 204:
-            return True
-        else:
-            return False
+        async with aiohttp.ClientSession() as session:
+            async with session.post(webhook_url, json=data) as response:
+                if response.status == 204:
+                    return True
+                else:
+                    return False
     except Exception as e:
         logger.error(f"Erro ao enviar mensagem para o Discord: {e}")
         return False
 
 
-async def validate_CPF(parameters: dict, form_parameters_list: list = []) -> bool:
+def validate_CPF(parameters: dict, form_parameters_list: list = []) -> bool:
     """Efetua a validação do CPF, tanto formatação quando dígito verificadores.
 
     Parâmetros:
@@ -625,7 +640,7 @@ async def validate_CPF(parameters: dict, form_parameters_list: list = []) -> boo
     return True
 
 
-async def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
+def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
     """
     Valida se a escrita do email está correta ou não,
     i.e., se está conforme o padrão dos nomes de email e
@@ -639,7 +654,7 @@ async def validate_email(parameters: dict, form_parameters_list: list = []) -> b
     return re.match(regex, email) is not None
 
 
-async def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
+def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
     """
     Valida se a string informada tem nome e sobrenome,
     ou seja, possui um espaço (' ') no meio da string.
