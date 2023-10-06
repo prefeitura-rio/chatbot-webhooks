@@ -41,6 +41,7 @@ CHATBOT_LAB_API_KEY = getenv_or_action("CHATBOT_LAB_API_KEY")
 # Chatbot Integrations
 CHATBOT_INTEGRATIONS_URL = getenv_or_action("CHATBOT_INTEGRATIONS_URL")
 CHATBOT_INTEGRATIONS_KEY = getenv_or_action("CHATBOT_INTEGRATIONS_KEY")
+CHATBOT_PGM_ACCESS_KEY = getenv_or_action("CHATBOT_PGM_ACCESS_KEY")
 
 # SGRC
 SGRC_URL = getenv_or_action("SGRC_URL")

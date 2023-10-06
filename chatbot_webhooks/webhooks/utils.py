@@ -9,7 +9,6 @@ from typing import Any, Dict, Union
 
 import aiohttp
 import geopandas as gpd
-import requests
 from async_googlemaps import AsyncClient
 from google.oauth2 import service_account
 from jellyfish import jaro_similarity
@@ -676,51 +675,92 @@ def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
         return False
 
 
+async def internal_request(
+    url: str,
+    method: str = "GET",
+    request_kwargs: dict = {},
+) -> aiohttp.ClientResponse:
+    """
+    Uses chatbot-integrations for making requests through the internal network.
+
+    Args:
+        url (str): The URL to be requested.
+        method (str, optional): The HTTP method. Defaults to "GET".
+        request_kwargs (dict, optional): The request kwargs. Defaults to {}.
+
+    Returns:
+        aiohttp.ClientResponse: The response object.
+    """
+    integrations_url = get_integrations_url("request")
+    payload = json.dumps(
+        {
+            "url": url,
+            "method": method,
+            "request_kwargs": request_kwargs,
+        }
+    )
+    key = config.CHATBOT_INTEGRATIONS_KEY
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.request(
+            "POST", integrations_url, headers=headers, data=payload
+        ) as response:
+            return await response.json(content_type=None)
+
+
 async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     # Pegando o token de autenticação
-    autenticacao = requests.post(
-        "http://10.2.223.161/api/security/token",
-        verify=False,
-        headers={"Host": "epgmhom.rio.rj.gov.br"},
-        data={
-            "grant_type": "password",
-            "Consumidor": "chatbot",
-            "ChaveAcesso": "7c2404d1-5f35-4411-a56b-8427f44b48e6",
+    auth_response = await internal_request(
+        url="http://10.2.223.161/api/security/token",
+        method="POST",
+        request_kwargs={
+            "verify": False,
+            "headers": {"Host": "epgmhom.rio.rj.gov.br"},
+            "data": {
+                "grant_type": "password",
+                "Consumidor": "chatbot",
+                "ChaveAcesso": config.CHATBOT_PGM_ACCESS_KEY,
+            },
         },
     )
+    if "access_token" not in auth_response:
+        raise Exception("Failed to get PGM access token")
+    token = f'Bearer {auth_response["access_token"]}'
+    logger.info("Token de autenticação obtido com sucesso")
 
-    token = f'Bearer {autenticacao.json()["access_token"]}'
-
-    # endpoint = v2/cdas/protestadas
-    # Fazer uma solicitação GET
-    resp = requests.post(
-        f"http://10.2.223.161/api/{endpoint}",
-        verify=False,
-        headers={"Host": "epgmhom.rio.rj.gov.br", "Authorization": token},
-        data=data,
+    # Fazer uma solicitação POST
+    response = await internal_request(
+        url=f"http://10.2.223.161/api/{endpoint}",
+        method="POST",
+        request_kwargs={
+            "verify": False,
+            "headers": {"Host": "epgmhom.rio.rj.gov.br", "Authorization": token},
+            "data": data,
+        },
     )
 
     # Imprimir o conteúdo das respostas
     logger.info("Resposta da solicitação POST:")
-    logger.info(resp.json())
+    logger.info(response)
 
-    if resp.json()["success"]:
+    if response["success"]:
         logger.info("A API retornou registros.")
-        return resp.json()["data"]
+        return response["data"]
     else:
         logger.info(
-            f'Algo deu errado durante a solicitação, segue justificativa: {resp.json()["data"][0]["value"]}'
+            f'Algo deu errado durante a solicitação, segue justificativa: {response["data"][0]["value"]}'
         )
         motivos = []
-        for item in resp.json()["data"]:
+        for item in response["data"]:
             motivos.append(item["value"])
         return {"erro": True, "motivos": motivos}
 
-    # guias_protestadas = resp.json()["data"]
+    # guias_protestadas = response_json["data"]
 
     # for i, guia in enumerate(guias_protestadas):
     #     print(i+1)
     #     print(guia)
     #     print("/n/n")
-
-    return
