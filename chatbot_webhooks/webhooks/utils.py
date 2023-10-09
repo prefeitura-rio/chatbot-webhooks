@@ -208,11 +208,15 @@ async def get_ipp_info(parameters: dict) -> bool:
             # Caso mesmo assim um bairro não tenha sido encontrado, define temporariamente um valor não nulo
             # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
             if not parameters["logradouro_bairro_ipp"]:
+                logger.info("neighborhood_id foi chamado e nenhum bairro foi encontrado")
                 parameters["logradouro_bairro_ipp"] = " "
+            
+            logger.info(f"Após chamar o endpoint neighborhood_id o valor do logradouro_bairro_ipp é: {parameters['logradouro_bairro_ipp']}")
 
         # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
         # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o
         # logradouro_id_ipp pelo correspondente ao novo logradouro mais similar ao do Google
+        logger.info("Chamando função que identifica o logradouro do IPP por similaridade de texto")
         parameters = await get_ipp_street_code(parameters)
 
         return True
