@@ -397,6 +397,11 @@ async def google_geolocator(address: str, parameters: dict) -> bool:
         elif "postal_code" in item["types"]:
             # google_found_zip_code = True
             parameters["logradouro_cep"] = item["long_name"]
+            cep_formatado = parameters["logradouro_cep"].replace('-', '')
+            logger.info(f"O tamanho do CEP é de {len(cep_formatado)} caracteres")
+            if len(cep_formatado) < 8:
+                parameters["logradouro_cep"] = None
+                logger.info("CEP deixado em branco, já que tem tamanho menor que 8")
         elif "administrative_area_level_2" in item["types"]:
             parameters["logradouro_cidade"] = item["long_name"]
         elif "administrative_area_level_1" in item["types"]:
