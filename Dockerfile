@@ -3,22 +3,6 @@ ARG PYTHON_VERSION=3.10-slim
 
 FROM python:${PYTHON_VERSION}
 
-# Install virtualenv and create a virtual environment
-RUN pip install --no-cache-dir -U virtualenv>=20.13.1 && virtualenv /env --python=python3.10
-ENV PATH /env/bin:$PATH
-
-# Install pip requirements
-WORKDIR /app
-COPY . .
-RUN /env/bin/pip install --no-cache-dir . && \
-    rm nginx.conf
-
-# Install nginx and copy configuration
-RUN apt-get update && apt-get install -y --no-install-recommends nginx curl netcat-traditional \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm /etc/nginx/sites-enabled/default
-COPY nginx.conf /etc/nginx/nginx.conf
 # https://docs.python.org/3/using/cmdline.html#envvar-PYTHONDONTWRITEBYTECODE
 # Prevents Python from writing .pyc files to disc
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -28,11 +12,15 @@ ENV PYTHONDONTWRITEBYTECODE 1
 # in real time. Equivalent to python -u: https://docs.python.org/3/using/cmdline.html#cmdoption-u
 ENV PYTHONUNBUFFERED 1
 
-# Copy app, generate static and set permissions
-RUN /env/bin/python manage.py collectstatic --no-input --settings=chatbot_webhooks.settings.base && \
-    chown -R www-data:www-data /app
+# Install virtualenv and create a virtual environment
+RUN pip install --no-cache-dir -U poetry && \
+    poetry config virtualenvs.create false
 
-# Expose and run app
-EXPOSE 80
-STOPSIGNAL SIGKILL
-CMD ["/app/start-server.sh"]
+# Copy the project files into the working directory
+# and install dependencies
+WORKDIR /app
+COPY . .
+RUN poetry install --no-dev --no-interaction --no-ansi
+
+# Run the application
+CMD ["uvicorn", "chatbot_webhooks.main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2"]
