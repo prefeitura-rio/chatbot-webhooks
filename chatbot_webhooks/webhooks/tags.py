@@ -619,10 +619,10 @@ async def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     # Se ao final de todo o processo não foi possível identificar logradouro_id e
     # logradouro_id_bairro válidos na base do IPP, não podemos seguir
     if (
-        parameters["logradouro_id_ipp"] is None
-        or parameters["logradouro_id_ipp"] == ""
-        or parameters["logradouro_id_bairro_ipp"] is None
-        or parameters["logradouro_id_bairro_ipp"] == "0"
+        parameters.get("logradouro_id_ipp", None) is None
+        or parameters.get("logradouro_id_ipp", None) == ""
+        or parameters.get("logradouro_id_bairro_ipp", None) is None
+        or parameters.get("logradouro_id_bairro_ipp", None) == "0"
     ):
         parameters["logradouro_indicador_validade"] = False
         return message, parameters

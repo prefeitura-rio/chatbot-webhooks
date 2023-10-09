@@ -208,11 +208,15 @@ async def get_ipp_info(parameters: dict) -> bool:
             # Caso mesmo assim um bairro não tenha sido encontrado, define temporariamente um valor não nulo
             # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
             if not parameters["logradouro_bairro_ipp"]:
+                logger.info("neighborhood_id foi chamado e nenhum bairro foi encontrado")
                 parameters["logradouro_bairro_ipp"] = " "
+            
+            logger.info(f"Após chamar o endpoint neighborhood_id o valor do logradouro_bairro_ipp é: {parameters['logradouro_bairro_ipp']}")
 
         # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
         # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o
         # logradouro_id_ipp pelo correspondente ao novo logradouro mais similar ao do Google
+        logger.info("Chamando função que identifica o logradouro do IPP por similaridade de texto")
         parameters = await get_ipp_street_code(parameters)
 
         return True
@@ -397,6 +401,11 @@ async def google_geolocator(address: str, parameters: dict) -> bool:
         elif "postal_code" in item["types"]:
             # google_found_zip_code = True
             parameters["logradouro_cep"] = item["long_name"]
+            cep_formatado = parameters["logradouro_cep"].replace('-', '')
+            logger.info(f"O tamanho do CEP é de {len(cep_formatado)} caracteres")
+            if len(cep_formatado) < 8:
+                parameters["logradouro_cep"] = None
+                logger.info("CEP deixado em branco, já que tem tamanho menor que 8")
         elif "administrative_area_level_2" in item["types"]:
             parameters["logradouro_cidade"] = item["long_name"]
         elif "administrative_area_level_1" in item["types"]:
