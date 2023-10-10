@@ -330,6 +330,16 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 start_datetime = data_ocorrencia_dict
                 end_datetime = data_ocorrencia_dict
 
+            # Verificar se "year", "month" e "day" estão presentes no dicionário, senão, use a data de hoje
+            if "year" not in start_datetime or "month" not in start_datetime or "day" not in start_datetime:
+                data_atual = datetime.now()
+                start_datetime["year"] = data_atual.year
+                start_datetime["month"] = data_atual.month
+                start_datetime["day"] = data_atual.day
+                end_datetime["year"] = data_atual.year
+                end_datetime["month"] = data_atual.month
+                end_datetime["day"] = data_atual.day
+
             # Criar objetos de data e hora a partir dos dados do dicionário
             start_dt = datetime(
                 year=int(start_datetime["year"]),
