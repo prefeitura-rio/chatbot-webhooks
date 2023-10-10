@@ -183,8 +183,9 @@ async def get_ipp_info(parameters: dict) -> bool:
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
         if parameters["logradouro_id_bairro_ipp"] == "0":
+            logger.info("1")
             url = get_integrations_url("neighborhood_id")
-
+            logger.info("2")
             payload = json.dumps(
                 {
                     "name": parameters["logradouro_bairro"]
@@ -199,12 +200,17 @@ async def get_ipp_info(parameters: dict) -> bool:
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {key}",
             }
-
+            logger.info("3")
             async with aiohttp.ClientSession() as session:
                 async with session.request("POST", url, headers=headers, data=payload) as response:
-                    parameters["logradouro_id_bairro_ipp"] = await response.json()["id"]
-                    parameters["logradouro_bairro_ipp"] = await response.json()["name"]
-
+                    if "application/json" in response.headers.get("content-type", ""):
+                        json_response = await response.json()
+                        parameters["logradouro_id_bairro_ipp"] = json_response["id"]
+                        parameters["logradouro_bairro_ipp"] = json_response["name"]
+                    else:
+                        # Trate a resposta HTML ou outra resposta inesperada aqui
+                        logger.info("Resposta inesperada:", await response.text())
+            logger.info("4")
             # Caso mesmo assim um bairro não tenha sido encontrado, define temporariamente um valor não nulo
             # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
             if not parameters["logradouro_bairro_ipp"]:
