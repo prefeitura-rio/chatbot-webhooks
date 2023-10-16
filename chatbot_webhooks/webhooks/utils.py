@@ -183,8 +183,9 @@ async def get_ipp_info(parameters: dict) -> bool:
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
         if parameters["logradouro_id_bairro_ipp"] == "0":
+            logger.info("Situação dos parâmetros da conversa antes de chamar o endpoint neighborhood_id":)
+            logger.info(parameters)
             url = get_integrations_url("neighborhood_id")
-
             payload = json.dumps(
                 {
                     "name": parameters["logradouro_bairro"]
@@ -199,19 +200,20 @@ async def get_ipp_info(parameters: dict) -> bool:
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {key}",
             }
-
             async with aiohttp.ClientSession() as session:
                 async with session.request("POST", url, headers=headers, data=payload) as response:
-                    parameters["logradouro_id_bairro_ipp"] = await response.json()["id"]
-                    parameters["logradouro_bairro_ipp"] = await response.json()["name"]
-
+                    json_response = await response.json(content_type=None)
+                    parameters["logradouro_id_bairro_ipp"] = json_response["id"]
+                    parameters["logradouro_bairro_ipp"] = json_response["name"]
             # Caso mesmo assim um bairro não tenha sido encontrado, define temporariamente um valor não nulo
             # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
             if not parameters["logradouro_bairro_ipp"]:
                 logger.info("neighborhood_id foi chamado e nenhum bairro foi encontrado")
                 parameters["logradouro_bairro_ipp"] = " "
-            
-            logger.info(f"Após chamar o endpoint neighborhood_id o valor do logradouro_bairro_ipp é: {parameters['logradouro_bairro_ipp']}")
+
+            logger.info(
+                f"Após chamar o endpoint neighborhood_id o valor do logradouro_bairro_ipp é: {parameters['logradouro_bairro_ipp']}"
+            )
 
         # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
         # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o
@@ -401,7 +403,7 @@ async def google_geolocator(address: str, parameters: dict) -> bool:
         elif "postal_code" in item["types"]:
             # google_found_zip_code = True
             parameters["logradouro_cep"] = item["long_name"]
-            cep_formatado = parameters["logradouro_cep"].replace('-', '')
+            cep_formatado = parameters["logradouro_cep"].replace("-", "")
             logger.info(f"O tamanho do CEP é de {len(cep_formatado)} caracteres")
             if len(cep_formatado) < 8:
                 parameters["logradouro_cep"] = None
