@@ -183,7 +183,9 @@ async def get_ipp_info(parameters: dict) -> bool:
         # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # na base do IPP e pegando o codigo correspondente
         if parameters["logradouro_id_bairro_ipp"] == "0":
-            logger.info("Situação dos parâmetros da conversa antes de chamar o endpoint neighborhood_id":)
+            logger.info(
+                "Situação dos parâmetros da conversa antes de chamar o endpoint neighborhood_id"
+            )
             logger.info(parameters)
             url = get_integrations_url("neighborhood_id")
             payload = json.dumps(
