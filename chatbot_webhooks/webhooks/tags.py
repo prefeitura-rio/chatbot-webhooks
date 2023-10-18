@@ -490,6 +490,11 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             else:
                 dentro_quadra_esporte = "0"
 
+            # Foi usado "Quadra de esportes" pra ajudar o cidadão a entender e preencher melhor os parâmetros 
+            # mas o valor correto para a api é "Quadra"
+            if parameters["reparo_luminaria_localizacao"] == "Quadra de esportes":
+                parameters["reparo_luminaria_localizacao"] = "Quadra"
+
             if (
                 parameters.get("logradouro_indicador_praca", None)
                 or parameters["reparo_luminaria_localizacao"] == "Praça"
@@ -575,6 +580,115 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_interno"
             return message, parameters
+        #
+        # 182 - Reparo de Buraco, Deformamento ou Afundamento em Pista
+        #
+        elif str(codigo_servico_1746) == "182":
+            logger.info(parameters)
+
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+            )
+
+            # Definindo parâmetros específicos do serviço
+            specific_attributes = {
+                "riscoAcidente": "Indefinido",
+            }
+
+            # Definindo a descrição do serviço
+            descricao_completa = parameters["servico_1746_descricao"]
+
+            # Create new ticket
+            try:
+                logger.info("Serviço: Reparo de Buraco, Deformamento ou Afundamento em Pista")
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+
+                ticket: NewTicket = await new_ticket(
+                    address=address,
+                    classification_code=182,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters            
         else:
             raise NotImplementedError("Classification code not implemented")
     except:  # noqa
