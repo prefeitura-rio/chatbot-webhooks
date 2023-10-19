@@ -1090,17 +1090,17 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
         1: "inscricaoImobiliaria",
         2: "cda",
         3: "cpfCnpj",
-        5: "numeroExecucaoFiscal",
+        4: "numeroExecucaoFiscal",
     }
 
     mapeia_variaveis = {
         1: "inscricaoimobiliaria",
         2: "numero_certidao_divida_ativa",
         3: "cpf_cnpj_contribuinte",
-        5: "numero_execucao_fiscal",
+        4: "numero_execucao_fiscal",
     }
 
-    if parameters["itemmenu"] in [1,2,3,5]:
+    if parameters["itemmenu"] in [1,2,3,4]:
         parametros_entrada = {
             "origem_solicitação": 0,
             mapeia_opcoes_consulta[parameters["itemmenu"]]: parameters[
@@ -1140,29 +1140,37 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
             1: "Inscrição Imobiliária",
             2: "Certidão de Dívida Ativa",
             3: "CPF/CNPJ",
-            4: "Nº e Ano do Auto de Infração",
-            5: "Número de Execução Fiscal",
+            4: "Número de Execução Fiscal",
+            5: "Nº e Ano do Auto de Infração",
         }
 
         msg = ""
         # Cabeçalho da Mensagem
-        if parameters["itemmenu"] in [1,2,3,5]:
-            msg += f"{mapeia_descricoes[parameters["itemmenu"]]}: {parameters[mapeia_variaveis[parameters["itemmenu"]]]}"
+        if parameters["itemmenu"] in [1,2,3,4]:
+            msg += f'{mapeia_descricoes[parameters["itemmenu"]]}: {parameters[mapeia_variaveis[parameters["itemmenu"]]]}'
         else:
-            msg += f"{mapeia_descricoes[parameters["itemmenu"]]}: {parameters["numero_auto_infracao"]} {parameters["ano_auto_infracao"]}"
+            msg += f'{mapeia_descricoes[parameters["itemmenu"]]}: {parameters["numero_auto_infracao"]} {parameters["ano_auto_infracao"]}'
         # Endereço do Imóvel
         if parameters["itemmenu"] == 1:
-            msg += f"\nEndereço do Imóvel: {registros["enderecoImovel"]}"
-        msg += f"\nData de Vencimento: {registros["dataVencimento"]}"
-        msg += f"\n"
-        if len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0 or len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"][""]) > 0:
-            msg += f"\nDébitos não parcelados - Saldo Total da Dívida {registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"]}"
+            msg += f'\nEndereço do Imóvel: {registros["enderecoImovel"]}'
+        msg += f'\nData de Vencimento: {registros["dataVencimento"]}'
+        if len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0 or len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0:
+            msg += f'\n\nDébitos não parcelados - Saldo Total da Dívida {registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"]}'
             if len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0:
                 # CDAS AQUI
-            if len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"][""]) > 0:
-                # EF AQUI
+                msg += f'\n\nCDAs não parceladas'
+                for i, cda in enumerate(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]):
+                    msg += f'\n*{i+1}.*\t*Certidão {cda["cdaId"]}* - Saldo {cda["valorSaldoTotal"]}'
+            if len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0:
+                # EFS AQUI
+                msg += f'\n\nEFs não parceladas'
+                for i, ef in enumerate(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]):
+                    msg += f'\n*{i+1}.*\t*Execução Fiscal {ef["numeroExecucaoFiscal"]}* - Saldo {ef["saldoExecucaoFiscalNaoParcelada"]}'
         if len(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]) > 0:
-            # GUIAS AQUI
-
+            msg += f'\n\nGuias de parcelamento vigentes'
+            for i, guia in enumerate(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]):
+                msg += f'\n*{i+1}.*\t*Guia nº {guia["numero"]}* - Saldo {guia["valorTotalGuia"]}'
+        
+        parameters["mensagem_divida_contribuinte"] = msg
 
     return message, parameters
