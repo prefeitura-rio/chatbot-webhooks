@@ -37,6 +37,12 @@ async def get_ipp_street_code(parameters: dict) -> dict:
         logger.info(
             f"Similaridade alta o suficiente: {jaro_similarity(logradouro_google, logradouro_ipp)}"
         )
+        geocode_logradouro_ipp_url = str(
+            "https://pgeo3.rio.rj.gov.br/arcgis/rest/services/Geocode/Geocode_Logradouros_WGS84/GeocodeServer/findAddressCandidates?"
+            + f"Address={logradouro_google_completo}&Address2=&Address3=&Neighborhood=&City=&Subregion=&Region=&Postal=&PostalExt=&CountryCode=&SingleLine=&outFields=cl"
+            + "&maxLocations=&matchOutOfRange=true&langCode=&locationType=&sourceCountry=&category=&location=&searchExtent=&outSR=&magicKey=&preferredLabelValues=&f=pjson"
+        )
+        logger.info(f"Geocode IPP URL: {geocode_logradouro_ipp_url}")
         return parameters
     else:
         logger.info(
@@ -152,6 +158,8 @@ async def get_ipp_info(parameters: dict) -> bool:
         + f'location={parameters["logradouro_longitude"]}%2C{parameters["logradouro_latitude"]}'
         + "&langCode=&locationType=&featureTypes=&outSR=&preferredLabelValues=&f=pjson"
     )
+
+    logger.info(f"Geocode IPP URL: {geocode_ipp_url}")
 
     async with aiohttp.ClientSession() as session:
         async with session.request(

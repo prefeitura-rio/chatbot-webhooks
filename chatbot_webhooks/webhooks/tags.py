@@ -446,6 +446,8 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         elif str(codigo_servico_1746) == "152":
             logger.info(parameters)
 
+            parameters["estacionamento_irregular_local"] == "Em ponto de táxi"
+
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
             if (
@@ -471,7 +473,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 neighborhood=parameters["logradouro_bairro_ipp"]
                 if "logradouro_bairro_ipp" in parameters
                 else "",  # logradouro_bairro
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"] #oi
                 if "logradouro_id_bairro_ipp" in parameters
                 else "",  # logradouro_id_bairro_ipp
                 number=street_number,
@@ -504,11 +506,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 esta_na_praca = "0"
 
             specific_attributes = {
-                "defeitoLuminaria": parameters["reparo_luminaria_defeito_classificado"],
-                "dentroQuadraEsporte": dentro_quadra_esporte,
-                "estaNaPraca": esta_na_praca,
-                "localizacaoLuminaria": parameters["reparo_luminaria_localizacao"],
-                "nomePraca": "",
+                "tipoEstacionamento": parameters["estacionamento_irregular_local"],
             }
 
             # Complementa a descrição dependendo da localização da luminária
@@ -1078,5 +1076,93 @@ async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
             mensagem_cda_protestadas += "\n\n" if (i + 1) < len(registros) else ""
 
         parameters["mensagem_cda_protestadas"] = mensagem_cda_protestadas
+
+    return message, parameters
+
+
+async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dict]:
+    parameters = request_data["sessionInfo"]["parameters"]
+    message = ""
+
+    logger.info(parameters)
+
+    mapeia_opcoes_consulta = {
+        1: "inscricaoImobiliaria",
+        2: "cda",
+        3: "cpfCnpj",
+        5: "numeroExecucaoFiscal",
+    }
+
+    mapeia_variaveis = {
+        1: "inscricaoimobiliaria",
+        2: "numero_certidao_divida_ativa",
+        3: "cpf_cnpj_contribuinte",
+        5: "numero_execucao_fiscal",
+    }
+
+    if parameters["itemmenu"] in [1,2,3,5]:
+        parametros_entrada = {
+            "origem_solicitação": 0,
+            mapeia_opcoes_consulta[parameters["itemmenu"]]: parameters[
+                mapeia_variaveis[parameters["itemmenu"]]
+            ],
+        }
+    else:
+        parametros_entrada = {
+            "origem_solicitação": 0,
+            "anoAutoInfracao": parameters["ano_auto_infracao"],
+            "numeroAutoInfracao": parameters["numero_auto_infracao"],
+        }
+
+    registros = await pgm_api(endpoint="v2/cdas/dividas-contribuinte", data=parametros_entrada)
+
+    if "erro" in registros:
+        parameters["api_resposta_sucesso"] = False
+        if "BadRequest - Não foram encontradas informações de protesto." in registros["motivos"]:
+            parameters["api_resposta_erro"] = False
+            parameters["api_descricao_erro"] = "Não foram encontradas informações de protesto."
+        else:
+            parameters["api_resposta_erro"] = True
+
+            # partes = mensagem_erro.split('BadRequest - ', 1)
+            # # Verificar se há pelo menos duas partes após a divisão
+            # if len(partes) >= 2:
+            #     descricao_erro = partes[1]  # O segundo elemento após a divisão contém a descrição do erro
+            #     descricao_erro = descricao_erro.strip()
+
+            parameters[
+                "api_descricao_erro"
+            ] = "Ocorreu um erro na sua solicitação, por favor tente mais tarde."
+    else:
+        logger.info("Oi lindos e lindas do Brasil!!!")
+        
+        mapeia_descricoes = {
+            1: "Inscrição Imobiliária",
+            2: "Certidão de Dívida Ativa",
+            3: "CPF/CNPJ",
+            4: "Nº e Ano do Auto de Infração",
+            5: "Número de Execução Fiscal",
+        }
+
+        msg = ""
+        # Cabeçalho da Mensagem
+        if parameters["itemmenu"] in [1,2,3,5]:
+            msg += f"{mapeia_descricoes[parameters["itemmenu"]]}: {parameters[mapeia_variaveis[parameters["itemmenu"]]]}"
+        else:
+            msg += f"{mapeia_descricoes[parameters["itemmenu"]]}: {parameters["numero_auto_infracao"]} {parameters["ano_auto_infracao"]}"
+        # Endereço do Imóvel
+        if parameters["itemmenu"] == 1:
+            msg += f"\nEndereço do Imóvel: {registros["enderecoImovel"]}"
+        msg += f"\nData de Vencimento: {registros["dataVencimento"]}"
+        msg += f"\n"
+        if len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0 or len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"][""]) > 0:
+            msg += f"\nDébitos não parcelados - Saldo Total da Dívida {registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"]}"
+            if len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0:
+                # CDAS AQUI
+            if len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"][""]) > 0:
+                # EF AQUI
+        if len(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]) > 0:
+            # GUIAS AQUI
+
 
     return message, parameters
