@@ -49,11 +49,11 @@ async def ai(request_data: dict) -> str:
             },
         ) as response:
             try:
-                await response.raise_for_status()
+                response.raise_for_status()
             except Exception as exc:
                 logger.error(f"Backend error: {exc}")
                 logger.error(f"Message: {response.text}")
-            response = await response.json()
+            response = await response.json(content_type=None)
             logger.info(f"API response: {response}")
             return response["answer"]
 
@@ -331,7 +331,11 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 end_datetime = data_ocorrencia_dict
 
             # Verificar se "year", "month" e "day" estão presentes no dicionário, senão, use a data de hoje
-            if "year" not in start_datetime or "month" not in start_datetime or "day" not in start_datetime:
+            if (
+                "year" not in start_datetime
+                or "month" not in start_datetime
+                or "day" not in start_datetime
+            ):
                 data_atual = datetime.now()
                 start_datetime["year"] = data_atual.year
                 start_datetime["month"] = data_atual.month
@@ -490,7 +494,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             else:
                 dentro_quadra_esporte = "0"
 
-            # Foi usado "Quadra de esportes" pra ajudar o cidadão a entender e preencher melhor os parâmetros 
+            # Foi usado "Quadra de esportes" pra ajudar o cidadão a entender e preencher melhor os parâmetros
             # mas o valor correto para a api é "Quadra"
             if parameters["reparo_luminaria_localizacao"] == "Quadra de esportes":
                 parameters["reparo_luminaria_localizacao"] = "Quadra"
@@ -688,7 +692,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.exception(exc)
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_interno"
-            return message, parameters            
+            return message, parameters
         else:
             raise NotImplementedError("Classification code not implemented")
     except:  # noqa

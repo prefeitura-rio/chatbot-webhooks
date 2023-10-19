@@ -116,8 +116,9 @@ async def get_ipp_street_code(parameters: dict) -> dict:
                     async with session.request(
                         "POST", url, headers=headers, data=payload
                     ) as response:
-                        parameters["logradouro_id_bairro_ipp"] = await response.json()["id"]
-                        parameters["logradouro_bairro_ipp"] = await response.json()["name"]
+                        response_json = await response.json(content_type=None)
+                        parameters["logradouro_id_bairro_ipp"] = response_json["id"]
+                        parameters["logradouro_bairro_ipp"] = response_json["name"]
 
                 logger.info(
                     f'Bairro obtido agora com busca por similaridade: {parameters["logradouro_bairro_ipp"]}'
@@ -590,7 +591,7 @@ async def send_discord_message(message: str, webhook_url: str) -> bool:
         data = {"content": message}
         async with aiohttp.ClientSession() as session:
             async with session.post(webhook_url, json=data) as response:
-                if await response.status == 204:
+                if response.status == 204:
                     return True
                 else:
                     return False
