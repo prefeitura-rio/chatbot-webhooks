@@ -278,8 +278,8 @@ async def get_user_info(cpf: str) -> dict:
             async with session.request(
                 "POST", url, headers=headers, data=json.dumps(payload)
             ) as response:
-                await response.raise_for_status()
-                data = await response.json()
+                response.raise_for_status()
+                data = await response.json(content_type=None)
         return data
     except Exception as exc:  # noqa
         logger.error(exc)
