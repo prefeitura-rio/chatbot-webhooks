@@ -1118,9 +1118,10 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
 
     if "erro" in registros:
         parameters["api_resposta_sucesso"] = False
-        if "BadRequest - Não foram encontradas informações de protesto." in registros["motivos"]:
+        logger.info(registros["motivos"])
+        if "BadRequest - Sua consulta não retornou débitos. Caso tenha realizado pelo nº da Execução Fiscal, talvez o sistema não possua todos os números em novo formato (CNJ)." in registros["motivos"]:
             parameters["api_resposta_erro"] = False
-            parameters["api_descricao_erro"] = "Não foram encontradas informações de protesto."
+            parameters["api_descricao_erro"] = "Sua consulta não retornou débitos. Caso tenha realizado pelo nº da Execução Fiscal, talvez o sistema não possua todos os números em novo formato (CNJ)."
         else:
             parameters["api_resposta_erro"] = True
 
@@ -1134,6 +1135,7 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
                 "api_descricao_erro"
             ] = "Ocorreu um erro na sua solicitação, por favor tente mais tarde."
     else:
+        parameters["api_resposta_sucesso"] = True
         logger.info("Oi lindos e lindas do Brasil!!!")
         
         mapeia_descricoes = {
@@ -1159,18 +1161,38 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
             if len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0:
                 # CDAS AQUI
                 msg += f'\n\nCDAs não parceladas'
+                cdas = []
                 for i, cda in enumerate(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]):
                     msg += f'\n*{i+1}.*\t*Certidão {cda["cdaId"]}* - Saldo {cda["valorSaldoTotal"]}'
+                    cdas.append(cda["cdaId"])
+                parameters["lista_cdas"] = cdas
             if len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0:
                 # EFS AQUI
                 msg += f'\n\nEFs não parceladas'
+                efs = []
                 for i, ef in enumerate(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]):
                     msg += f'\n*{i+1}.*\t*Execução Fiscal {ef["numeroExecucaoFiscal"]}* - Saldo {ef["saldoExecucaoFiscalNaoParcelada"]}'
+                    efs.append(ef["numeroExecucaoFiscal"])
+                parameters["lista_efs"] = efs
         if len(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]) > 0:
+            # GUIAS AQUI
             msg += f'\n\nGuias de parcelamento vigentes'
+            guias = []
             for i, guia in enumerate(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]):
                 msg += f'\n*{i+1}.*\t*Guia nº {guia["numero"]}* - Saldo {guia["valorTotalGuia"]}'
+                guias.append(guia["numero"])
+            parameters["lista_guias"] = guias
         
         parameters["mensagem_divida_contribuinte"] = msg
+
+        # Definindo parâmetros salto_total parcelado e não parcelado
+        if registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"] in ("R$0,00", "0", "", " "):
+            parameters["saldo_total_nao_parcelado"] = 0
+        else:
+            parameters["saldo_total_nao_parcelado"] = float(registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"][2:].replace(".", "").replace(",","."))
+        if registros["guiasParceladasComSaldoTotal"]["saldoTotalParcelado"] in ("R$0,00", "0", "", " "):
+            parameters["saldo_total_parcelado"] = 0
+        else:
+            parameters["saldo_total_parcelado"] = float(registros["guiasParceladasComSaldoTotal"]["saldoTotalParcelado"][2:].replace(".", "").replace(",","."))
 
     return message, parameters
