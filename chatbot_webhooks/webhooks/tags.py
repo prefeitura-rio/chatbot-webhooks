@@ -4,34 +4,28 @@ from typing import Tuple
 
 import aiohttp
 from loguru import logger
-from prefeitura_rio.integrations.sgrc.exceptions import (
-    SGRCBusinessRuleException,
-    SGRCDuplicateTicketException,
-    SGRCEquivalentTicketException,
-    SGRCInternalErrorException,
-    SGRCInvalidBodyException,
-    SGRCMalformedBodyException,
-)
-from prefeitura_rio.integrations.sgrc.models import (
-    Address,
-    NewTicket,
-    Phones,
-    Requester,
-)
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCBusinessRuleException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCDuplicateTicketException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCEquivalentTicketException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCInternalErrorException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCInvalidBodyException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCMalformedBodyException
+from prefeitura_rio.integrations.sgrc.models import Address
+from prefeitura_rio.integrations.sgrc.models import NewTicket
+from prefeitura_rio.integrations.sgrc.models import Phones
+from prefeitura_rio.integrations.sgrc.models import Requester
 from unidecode import unidecode
 
 from chatbot_webhooks import config
-from chatbot_webhooks.webhooks.utils import (
-    get_ipp_info,
-    get_user_info,
-    google_geolocator,
-    mask_email,
-    new_ticket,
-    pgm_api,
-    validate_CPF,
-    validate_email,
-    validate_name,
-)
+from chatbot_webhooks.webhooks.utils import get_ipp_info
+from chatbot_webhooks.webhooks.utils import get_user_info
+from chatbot_webhooks.webhooks.utils import google_geolocator
+from chatbot_webhooks.webhooks.utils import mask_email
+from chatbot_webhooks.webhooks.utils import new_ticket
+from chatbot_webhooks.webhooks.utils import pgm_api
+from chatbot_webhooks.webhooks.utils import validate_CPF
+from chatbot_webhooks.webhooks.utils import validate_email
+from chatbot_webhooks.webhooks.utils import validate_name
 
 
 async def ai(request_data: dict) -> str:
@@ -49,11 +43,11 @@ async def ai(request_data: dict) -> str:
             },
         ) as response:
             try:
-                await response.raise_for_status()
+                response.raise_for_status()
             except Exception as exc:
                 logger.error(f"Backend error: {exc}")
                 logger.error(f"Message: {response.text}")
-            response = await response.json()
+            response = await response.json(content_type=None)
             logger.info(f"API response: {response}")
             return response["answer"]
 
@@ -331,7 +325,11 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 end_datetime = data_ocorrencia_dict
 
             # Verificar se "year", "month" e "day" estão presentes no dicionário, senão, use a data de hoje
-            if "year" not in start_datetime or "month" not in start_datetime or "day" not in start_datetime:
+            if (
+                "year" not in start_datetime
+                or "month" not in start_datetime
+                or "day" not in start_datetime
+            ):
                 data_atual = datetime.now()
                 start_datetime["year"] = data_atual.year
                 start_datetime["month"] = data_atual.month
@@ -490,6 +488,11 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             else:
                 dentro_quadra_esporte = "0"
 
+            # Foi usado "Quadra de esportes" pra ajudar o cidadão a entender e preencher melhor os parâmetros
+            # mas o valor correto para a api é "Quadra"
+            if parameters["reparo_luminaria_localizacao"] == "Quadra de esportes":
+                parameters["reparo_luminaria_localizacao"] = "Quadra"
+
             if (
                 parameters.get("logradouro_indicador_praca", None)
                 or parameters["reparo_luminaria_localizacao"] == "Praça"
@@ -525,6 +528,223 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 ticket: NewTicket = await new_ticket(
                     address=address,
                     classification_code=18131,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
+        #
+        # 182 - Reparo de Buraco, Deformamento ou Afundamento em Pista
+        #
+        elif str(codigo_servico_1746) == "182":
+            logger.info(parameters)
+
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+            )
+
+            # Definindo parâmetros específicos do serviço
+            specific_attributes = {
+                "riscoAcidente": "Indefinido",
+            }
+
+            # Definindo a descrição do serviço
+            descricao_completa = parameters["servico_1746_descricao"]
+
+            # Create new ticket
+            try:
+                logger.info("Serviço: Reparo de Buraco, Deformamento ou Afundamento em Pista")
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+
+                ticket: NewTicket = await new_ticket(
+                    address=address,
+                    classification_code=182,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
+        #
+        # 3581 - Fiscalização de estacionamento irregular de veículo
+        #
+        elif str(codigo_servico_1746) == "3581":
+            logger.info(parameters)
+
+            ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+            )
+
+            # As opções de tipo de estacionamento que a API aceita
+            tipo_estacionamento_opcoes = {
+                "Sobre a calçada": "402 - Sobre a calçada",
+                "Em via pública": "403 - Em via pública",
+                "Em frente a portão de garagem": "405 - Em frente a portão de garagem",
+                "Em local com placa de proibido estacionar": "401 - Em local com placa de proibido estacionar",
+                "Em ponto de táxi": "411 - Em ponto de táxi",
+                "Em vaga de portadores de necessidades especiais": "404 - Em vaga de portadores de necessidades especiais",
+                "Em local de carga e descarga": "406 - Em local de carga e descarga",
+                "Em ciclovia": "417 - Em ciclovia",
+            }
+            tipo_estacionamento = tipo_estacionamento_opcoes[parameters["estacionamento_irregular_local"]]
+
+            # Definindo parâmetros específicos do serviço
+            specific_attributes = {
+                "tipoEstacionamento": tipo_estacionamento,
+                "placa": parameters["estacionamento_irregular_placa_veiculo"],
+            }
+
+            try:
+                logger.info("Serviço: Fiscalização de estacionamento irregular de veículo")
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+                # Joins description
+                descricao_completa = parameters["servico_1746_descricao"]
+
+                ticket: NewTicket = await new_ticket(
+                    address=address,
+                    classification_code=3581,
                     description=descricao_completa,
                     requester=requester,
                     specific_attributes=specific_attributes,
