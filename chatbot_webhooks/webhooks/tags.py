@@ -506,14 +506,9 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 "nomePraca": "",
             }
 
-            # Complementa a descrição dependendo da localização da luminária
-            if parameters.get("logradouro_indicador_comunidade", None):
-                descricao_completa = (
-                    f'{parameters["servico_1746_descricao"]}. Dados do '
-                    f'condomínio: {parameters["reparo_luminaria_dados_comunidade"]}'
-                )
-            else:
-                descricao_completa = parameters["servico_1746_descricao"]
+
+            # Define a descrição do serviço
+            descricao_completa = parameters["servico_1746_descricao"]
 
             # Create new ticket
             try:
@@ -632,7 +627,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             # Definindo parâmetros específicos do serviço
             specific_attributes = {
                 "quantasLampadasSinal": lampadas_apagadas,
-                "nomeViasCruzamento": parameters["via_cruzamento"],
+                "nomeViasCruzamento": ponto_referencia,
                 "todoCruzamentoPiscando": todo_cruzamento_piscando,
             }
 
