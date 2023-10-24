@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Union
+from itertools import cycle
 
 import aiohttp
 import geopandas as gpd
@@ -651,6 +652,61 @@ def validate_CPF(parameters: dict, form_parameters_list: list = []) -> bool:
     # )
 
     return True
+
+
+def validate_CPF2 (numbers):
+    # Validação do primeiro dígito verificador:
+    sum_of_products = sum(a * b for a, b in zip(numbers[:9], range(10, 1, -1)))
+    expected_digit = (sum_of_products * 10) % 11 % 10
+    if numbers[9] != expected_digit:
+        return False
+
+    # Validação do segundo dígito verificador:
+    sum_of_products = sum(a * b for a, b in zip(numbers[:10], range(11, 1, -1)))
+    expected_digit = (sum_of_products * 10) % 11 % 10
+    if numbers[10] != expected_digit:
+        return False
+
+    return True
+
+
+def validate_CNPJ(cnpj: str) -> bool:
+    LENGTH_CNPJ = 14
+    if len(cnpj) != LENGTH_CNPJ:
+        return False
+
+    if cnpj in (c * LENGTH_CNPJ for c in "1234567890"):
+        return False
+
+    cnpj_r = cnpj[::-1]
+    for i in range(2, 0, -1):
+        cnpj_enum = zip(cycle(range(2, 10)), cnpj_r[i:])
+        dv = sum(map(lambda x: int(x[1]) * x[0], cnpj_enum)) * 10 % 11
+        if cnpj_r[i - 1:i] != str(dv % 10):
+            return False
+
+    return True
+
+def validate_cpf_cnpj(documento: str) -> bool:
+    """Efetua a validação de CPF ou CNPJ."""
+    
+    # Obtém apenas os números do documento, ignorando pontuações
+    numbers = [int(digit) for digit in documento if digit.isdigit()]
+
+    # Verifica se o documento possui 11 ou 14 números
+    if len(numbers) not in [11, 14] or len(set(numbers)) == 1:
+        return False
+
+    if len(numbers) == 11:  # CPF  
+        if not validate_CPF2 (numbers):
+            return False        
+
+    elif len(numbers) == 14:  # CNPJ
+        if not validate_CNPJ(''.join(map(str, numbers))):
+            return False
+
+    return True
+
 
 
 def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
