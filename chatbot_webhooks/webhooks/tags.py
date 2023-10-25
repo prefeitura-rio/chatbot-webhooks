@@ -509,7 +509,6 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 "nomePraca": "",
             }
 
-
             # Define a descrição do serviço
             descricao_completa = parameters["servico_1746_descricao"]
 
@@ -687,7 +686,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         #
         elif str(codigo_servico_1746) == "3581":
             logger.info(parameters)
-            
+
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
             if (
@@ -734,7 +733,9 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 "Em local de carga e descarga": "406 - Em local de carga e descarga",
                 "Em ciclovia": "417 - Em ciclovia",
             }
-            tipo_estacionamento = tipo_estacionamento_opcoes[parameters["estacionamento_irregular_local"]]
+            tipo_estacionamento = tipo_estacionamento_opcoes[
+                parameters["estacionamento_irregular_local"]
+            ]
 
             # Definindo parâmetros específicos do serviço
             specific_attributes = {

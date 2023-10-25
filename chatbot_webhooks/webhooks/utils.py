@@ -33,7 +33,9 @@ async def get_ipp_street_code(parameters: dict) -> dict:
             break
 
     logger.info(f"Logradouro IPP: {logradouro_ipp}")
-    if (jaro_similarity(logradouro_google, logradouro_ipp) > THRESHOLD) and parameters["logradouro_bairro_ipp"] != " ":
+    if (jaro_similarity(logradouro_google, logradouro_ipp) > THRESHOLD) and parameters[
+        "logradouro_bairro_ipp"
+    ] != " ":
         logger.info(
             f"Similaridade alta o suficiente: {jaro_similarity(logradouro_google, logradouro_ipp)}"
         )
@@ -42,7 +44,9 @@ async def get_ipp_street_code(parameters: dict) -> dict:
         logger.info(
             f"logradouro_nome retornado pelo Google significantemente diferente do retornado pelo IPP. Threshold: {jaro_similarity(logradouro_google, logradouro_ipp)}"
         )
-        logger.info(f'Ou bairro IPP não identificado. Valor Bairro IPP: {parameters["logradouro_bairro_ipp"]}')
+        logger.info(
+            f'Ou bairro IPP não identificado. Valor Bairro IPP: {parameters["logradouro_bairro_ipp"]}'
+        )
         # Call IPP api
         geocode_logradouro_ipp_url = str(
             "https://pgeo3.rio.rj.gov.br/arcgis/rest/services/Geocode/Geocode_Logradouros_WGS84/GeocodeServer/findAddressCandidates?"
