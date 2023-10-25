@@ -736,10 +736,12 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             }
             tipo_estacionamento = tipo_estacionamento_opcoes[parameters["estacionamento_irregular_local"]]
 
+            placa_veiculo = parameters.get("estacionamento_irregular_placa_veiculo", None)
+
             # Definindo parâmetros específicos do serviço
             specific_attributes = {
                 "tipoEstacionamento": tipo_estacionamento,
-                "placa": parameters["estacionamento_irregular_placa_veiculo"],
+                "placa": placa_veiculo,
             }
 
             try:
