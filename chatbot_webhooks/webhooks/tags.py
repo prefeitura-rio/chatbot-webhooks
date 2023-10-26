@@ -856,14 +856,14 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 
             lampadas_apagadas = lampadas_apagadas_opcoes[parameters["rsta_quantidades_lampadas"]]
 
-            todo_cruzamento_piscando = "0"
-            if parameters["rsta_quantidades_lampadas"] == "todas":
-                todo_cruzamento_piscando = "1"
+            todo_cruzamento_piscando = parameters.get("rsta_cruzamento_piscando", "0")
+
+            cruzamento = parameters.get("rsta_dados_cruzamento", "Não fica em cruzamento")
 
             # Definindo parâmetros específicos do serviço
             specific_attributes = {
                 "quantasLampadasSinal": lampadas_apagadas,
-                "nomeViasCruzamento": ponto_referencia,
+                "nomeViasCruzamento": cruzamento,
                 "todoCruzamentoPiscando": todo_cruzamento_piscando,
             }
 
