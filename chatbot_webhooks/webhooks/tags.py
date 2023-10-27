@@ -1138,8 +1138,8 @@ async def define_variavel_ultima_mensagem(request_data: dict) -> tuple[str, dict
     ultima_mensagem_usuario = request_data["text"]
 
     # Define caracteres não aceitos no SGRC e que é melhor que sejam retirados dos inputs do usuário
-    mapping_table = str.maketrans({'<': '', '>': ''})
-    
+    mapping_table = str.maketrans({"<": "", ">": ""})
+
     # use translate() method to replace characters
     ultima_mensagem_usuario = ultima_mensagem_usuario.translate(mapping_table)
 
