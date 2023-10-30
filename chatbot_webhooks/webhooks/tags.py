@@ -840,7 +840,6 @@ async def validador_cpf_cnpj(request_data: dict) -> tuple[str, dict, list]:
     return message, parameters  # , form_parameters_list
 
 
-
 async def validador_email(request_data: dict) -> tuple[str, dict, list]:
     parameters = request_data["sessionInfo"]["parameters"]
     # form_parameters_list = request_data["pageInfo"]["formInfo"]["parameterInfo"]

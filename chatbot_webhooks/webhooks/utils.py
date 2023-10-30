@@ -654,7 +654,7 @@ def validate_CPF(parameters: dict, form_parameters_list: list = []) -> bool:
     return True
 
 
-def validate_CPF2 (numbers):
+def validate_CPF2(numbers):
     # Validação do primeiro dígito verificador:
     sum_of_products = sum(a * b for a, b in zip(numbers[:9], range(10, 1, -1)))
     expected_digit = (sum_of_products * 10) % 11 % 10
@@ -682,14 +682,15 @@ def validate_CNPJ(cnpj: str) -> bool:
     for i in range(2, 0, -1):
         cnpj_enum = zip(cycle(range(2, 10)), cnpj_r[i:])
         dv = sum(map(lambda x: int(x[1]) * x[0], cnpj_enum)) * 10 % 11
-        if cnpj_r[i - 1:i] != str(dv % 10):
+        if cnpj_r[i - 1 : i] != str(dv % 10):
             return False
 
     return True
 
+
 def validate_cpf_cnpj(documento: str) -> bool:
     """Efetua a validação de CPF ou CNPJ."""
-    
+
     # Obtém apenas os números do documento, ignorando pontuações
     numbers = [int(digit) for digit in documento if digit.isdigit()]
 
@@ -697,16 +698,15 @@ def validate_cpf_cnpj(documento: str) -> bool:
     if len(numbers) not in [11, 14] or len(set(numbers)) == 1:
         return False
 
-    if len(numbers) == 11:  # CPF  
-        if not validate_CPF2 (numbers):
-            return False        
+    if len(numbers) == 11:  # CPF
+        if not validate_CPF2(numbers):
+            return False
 
     elif len(numbers) == 14:  # CNPJ
-        if not validate_CNPJ(''.join(map(str, numbers))):
+        if not validate_CNPJ("".join(map(str, numbers))):
             return False
 
     return True
-
 
 
 def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
