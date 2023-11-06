@@ -85,6 +85,7 @@ async def input_ascsac(request: Request) -> Response:
 
     # Check if there are options to be presented to the user as buttons
     buttons = []
+    files = []
     new_answer_messages = []
     for answer_message in answer_messages:
         if answer_message.startswith(config.SIGNATURE_BUTTONS_MESSAGE):
@@ -92,13 +93,22 @@ async def input_ascsac(request: Request) -> Response:
             answer_message = answer_message[len(config.SIGNATURE_BUTTONS_MESSAGE) :]  # noqa: E203
             # Get the buttons
             buttons = [option.strip() for option in answer_message.split(",")]
+        elif answer_message.startswith(config.SIGNATURE_FILE_MESSAGE):
+            # Crop the signature
+            answer_message = answer_message[
+                len(config.SIGNATURE_FILE_MESSAGE) :  # noqa: E203
+            ].strip()
+            # Get the file
+            files = [answer_message]
         else:
             new_answer_messages.append(answer_message)
     answer_messages = new_answer_messages
 
     # Return the answer
     return Response(
-        content=json.dumps({"answer_messages": answer_messages, "buttons": buttons}),
+        content=json.dumps(
+            {"answer_messages": answer_messages, "buttons": buttons, "files": files}
+        ),
         status_code=200,
     )
 
