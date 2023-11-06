@@ -98,8 +98,10 @@ async def input_ascsac(request: Request) -> Response:
             answer_message = answer_message[
                 len(config.SIGNATURE_FILE_MESSAGE) :  # noqa: E203
             ].strip()
-            # Get the file
-            files = [answer_message]
+            # Get the filename and file
+            file_content = answer_message.split(":")[-1].strip()
+            filename = ":".join(answer_message.split(":")[:-1]).strip()
+            files.append({"filename": filename, "content": file_content})
         else:
             new_answer_messages.append(answer_message)
     answer_messages = new_answer_messages
