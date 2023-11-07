@@ -1331,6 +1331,7 @@ async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
 
     return message, parameters
 
+
 async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
