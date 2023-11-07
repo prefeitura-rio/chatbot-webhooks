@@ -4,34 +4,28 @@ from typing import Tuple
 
 import aiohttp
 from loguru import logger
-from prefeitura_rio.integrations.sgrc.exceptions import (
-    SGRCBusinessRuleException,
-    SGRCDuplicateTicketException,
-    SGRCEquivalentTicketException,
-    SGRCInternalErrorException,
-    SGRCInvalidBodyException,
-    SGRCMalformedBodyException,
-)
-from prefeitura_rio.integrations.sgrc.models import (
-    Address,
-    NewTicket,
-    Phones,
-    Requester,
-)
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCBusinessRuleException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCDuplicateTicketException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCEquivalentTicketException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCInternalErrorException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCInvalidBodyException
+from prefeitura_rio.integrations.sgrc.exceptions import SGRCMalformedBodyException
+from prefeitura_rio.integrations.sgrc.models import Address
+from prefeitura_rio.integrations.sgrc.models import NewTicket
+from prefeitura_rio.integrations.sgrc.models import Phones
+from prefeitura_rio.integrations.sgrc.models import Requester
 from unidecode import unidecode
 
 from chatbot_webhooks import config
-from chatbot_webhooks.webhooks.utils import (
-    get_ipp_info,
-    get_user_info,
-    google_geolocator,
-    mask_email,
-    new_ticket,
-    pgm_api,
-    validate_CPF,
-    validate_email,
-    validate_name,
-)
+from chatbot_webhooks.webhooks.utils import get_ipp_info
+from chatbot_webhooks.webhooks.utils import get_user_info
+from chatbot_webhooks.webhooks.utils import google_geolocator
+from chatbot_webhooks.webhooks.utils import mask_email
+from chatbot_webhooks.webhooks.utils import new_ticket
+from chatbot_webhooks.webhooks.utils import pgm_api
+from chatbot_webhooks.webhooks.utils import validate_CPF
+from chatbot_webhooks.webhooks.utils import validate_email
+from chatbot_webhooks.webhooks.utils import validate_name
 
 
 async def ai(request_data: dict) -> str:
@@ -49,11 +43,11 @@ async def ai(request_data: dict) -> str:
             },
         ) as response:
             try:
-                await response.raise_for_status()
+                response.raise_for_status()
             except Exception as exc:
                 logger.error(f"Backend error: {exc}")
                 logger.error(f"Message: {response.text}")
-            response = await response.json()
+            response = await response.json(content_type=None)
             logger.info(f"API response: {response}")
             return response["answer"]
 
@@ -475,11 +469,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 neighborhood=parameters["logradouro_bairro_ipp"]
                 if "logradouro_bairro_ipp" in parameters
                 else "",  # logradouro_bairro
-<<<<<<< HEAD
                 neighborhood_code=parameters["logradouro_id_bairro_ipp"]
-=======
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"]  # oi
->>>>>>> 5795275c5793faae567c1c0fd5151a90b89561c0
                 if "logradouro_id_bairro_ipp" in parameters
                 else "",  # logradouro_id_bairro_ipp
                 number=street_number,
@@ -1152,6 +1142,12 @@ async def define_variavel_ultima_mensagem(request_data: dict) -> tuple[str, dict
     message = ""
     ultima_mensagem_usuario = request_data["text"]
 
+    # Define caracteres não aceitos no SGRC e que é melhor que sejam retirados dos inputs do usuário
+    mapping_table = str.maketrans({"<": "", ">": ""})
+
+    # use translate() method to replace characters
+    ultima_mensagem_usuario = ultima_mensagem_usuario.translate(mapping_table)
+
     logger.info(
         f"A variável {parameters['variavel_recebe_ultima_mensagem']} está recebendo o valor \
     da última mensagem enviada pelo usuário: \n {ultima_mensagem_usuario}"
@@ -1334,7 +1330,6 @@ async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
         parameters["mensagem_cda_protestadas"] = mensagem_cda_protestadas
 
     return message, parameters
-
 
 async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
