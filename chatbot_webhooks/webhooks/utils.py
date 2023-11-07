@@ -737,6 +737,9 @@ async def internal_request(
 
 
 async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
+"""
+Essa função chama APIs da PGM
+"""
     # Pegando o token de autenticação
     auth_response = await internal_request(
         url="http://10.2.223.161/api/security/token",
