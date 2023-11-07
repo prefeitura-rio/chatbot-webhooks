@@ -331,7 +331,11 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 end_datetime = data_ocorrencia_dict
 
             # Verificar se "year", "month" e "day" estão presentes no dicionário, senão, use a data de hoje
-            if "year" not in start_datetime or "month" not in start_datetime or "day" not in start_datetime:
+            if (
+                "year" not in start_datetime
+                or "month" not in start_datetime
+                or "day" not in start_datetime
+            ):
                 data_atual = datetime.now()
                 start_datetime["year"] = data_atual.year
                 start_datetime["month"] = data_atual.month
@@ -446,8 +450,6 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         elif str(codigo_servico_1746) == "152":
             logger.info(parameters)
 
-            parameters["estacionamento_irregular_local"] == "Em ponto de táxi"
-
             # Considera o ponto de referência informado pelo usuário caso não tenha sido
             # identificado algum outro pelo Google
             if (
@@ -473,7 +475,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 neighborhood=parameters["logradouro_bairro_ipp"]
                 if "logradouro_bairro_ipp" in parameters
                 else "",  # logradouro_bairro
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"] #oi
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
                 if "logradouro_id_bairro_ipp" in parameters
                 else "",  # logradouro_id_bairro_ipp
                 number=street_number,
@@ -492,7 +494,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             else:
                 dentro_quadra_esporte = "0"
 
-            # Foi usado "Quadra de esportes" pra ajudar o cidadão a entender e preencher melhor os parâmetros 
+            # Foi usado "Quadra de esportes" pra ajudar o cidadão a entender e preencher melhor os parâmetros
             # mas o valor correto para a api é "Quadra"
             if parameters["reparo_luminaria_localizacao"] == "Quadra de esportes":
                 parameters["reparo_luminaria_localizacao"] = "Quadra"
@@ -506,17 +508,15 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 esta_na_praca = "0"
 
             specific_attributes = {
-                "tipoEstacionamento": parameters["estacionamento_irregular_local"],
+                "defeitoLuminaria": parameters["reparo_luminaria_defeito_classificado"],
+                "dentroQuadraEsporte": dentro_quadra_esporte,
+                "estaNaPraca": esta_na_praca,
+                "localizacaoLuminaria": parameters["reparo_luminaria_localizacao"],
+                "nomePraca": "",
             }
 
-            # Complementa a descrição dependendo da localização da luminária
-            if parameters.get("logradouro_indicador_comunidade", None):
-                descricao_completa = (
-                    f'{parameters["servico_1746_descricao"]}. Dados do '
-                    f'condomínio: {parameters["reparo_luminaria_dados_comunidade"]}'
-                )
-            else:
-                descricao_completa = parameters["servico_1746_descricao"]
+            # Define a descrição do serviço
+            descricao_completa = parameters["servico_1746_descricao"]
 
             # Create new ticket
             try:
@@ -686,7 +686,259 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.exception(exc)
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_interno"
-            return message, parameters            
+            return message, parameters
+        #
+        # 3581 - Fiscalização de estacionamento irregular de veículo
+        #
+        elif str(codigo_servico_1746) == "3581":
+            logger.info(parameters)
+
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+            )
+
+            # As opções de tipo de estacionamento que a API aceita
+            tipo_estacionamento_opcoes = {
+                "Sobre a calçada": "402 - Sobre a calçada",
+                "Em via pública": "403 - Em via pública",
+                "Em frente a portão de garagem": "405 - Em frente a portão de garagem",
+                "Em local com placa de proibido estacionar": "401 - Em local com placa de proibido estacionar",
+                "Em ponto de táxi": "411 - Em ponto de táxi",
+                "Em vaga de portadores de necessidades especiais": "404 - Em vaga de portadores de necessidades especiais",
+                "Em local de carga e descarga": "406 - Em local de carga e descarga",
+                "Em ciclovia": "417 - Em ciclovia",
+            }
+            tipo_estacionamento = tipo_estacionamento_opcoes[
+                parameters["estacionamento_irregular_local"]
+            ]
+
+            placa_veiculo = parameters.get("estacionamento_irregular_placa_veiculo", None)
+
+            # Definindo parâmetros específicos do serviço
+            specific_attributes = {
+                "tipoEstacionamento": tipo_estacionamento,
+                "placa": placa_veiculo,
+            }
+
+            try:
+                logger.info("Serviço: Fiscalização de estacionamento irregular de veículo")
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+                # Joins description
+                descricao_completa = parameters["servico_1746_descricao"]
+
+                ticket: NewTicket = await new_ticket(
+                    address=address,
+                    classification_code=3581,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
+        #
+        # 3802 - Reparo de sinal de trânsito apagado
+        #
+        elif str(codigo_servico_1746) == "3802":
+            logger.info(parameters)
+
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+            )
+
+            # As opções de lampadas pagadas que a API aceita
+            lampadas_apagadas_opcoes = {
+                "uma": "Uma lâmpada apenas",
+                "duas": "Duas lâmpadas",
+                "todas": "Todas as lâmpadas do sinal",
+            }
+
+            lampadas_apagadas = lampadas_apagadas_opcoes[parameters["rsta_quantidades_lampadas"]]
+
+            todo_cruzamento_piscando = parameters.get("rsta_cruzamento_piscando", "0")
+
+            cruzamento = (
+                "Rua 1: "
+                + parameters.get("rsta_dados_cruzamento_1", "Não fica em cruzamento")
+                + ". Rua 2 ou Ponto de Referência: "
+                + parameters.get("rsta_dados_cruzamento_2", "Não fica em cruzamento")
+            )
+
+            # Definindo parâmetros específicos do serviço
+            specific_attributes = {
+                "quantasLampadasSinal": lampadas_apagadas,
+                "nomeViasCruzamento": cruzamento,
+                "todoCruzamentoPiscando": todo_cruzamento_piscando,
+            }
+
+            try:
+                logger.info("Serviço: Reparo de sinal de trânsito apagado")
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+                # Joins description
+                descricao_completa = parameters["servico_1746_descricao"]
+
+                ticket: NewTicket = await new_ticket(
+                    address=address,
+                    classification_code=3802,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
         else:
             raise NotImplementedError("Classification code not implemented")
     except:  # noqa
