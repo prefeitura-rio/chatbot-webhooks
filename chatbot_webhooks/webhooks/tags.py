@@ -858,7 +858,12 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 
             todo_cruzamento_piscando = parameters.get("rsta_cruzamento_piscando", "0")
 
-            cruzamento = parameters.get("rsta_dados_cruzamento", "Não fica em cruzamento")
+            cruzamento = (
+                "Rua 1: "
+                + parameters.get("rsta_dados_cruzamento_1", "Não fica em cruzamento")
+                + ". Rua 2 ou Ponto de Referência: "
+                + parameters.get("rsta_dados_cruzamento_2", "Não fica em cruzamento")
+            )
 
             # Definindo parâmetros específicos do serviço
             specific_attributes = {
