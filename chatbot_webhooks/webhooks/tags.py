@@ -1471,6 +1471,8 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
         parameters["dicionario_itens"] = itens_pagamento
         parameters["total_itens_pagamento"] = indice
         parameters["mensagem_divida_contribuinte"] = msg
+        parameters["guias_quantidade_total"] = len(parameters.get("lista_guias", []))
+        parameters["efs_cdas_quantidade_total"] = len(parameters.get("lista_efs",[])) + len(parameters.get("lista_cdas", []))
 
         # Definindo parâmetros salto_total parcelado e não parcelado
         if registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"] in (
@@ -1573,51 +1575,54 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
 
     logger.info(parameters)
 
-    # cdas = []
-    # efs = []
-    # if parameters.get("todos_itens_informados", None):
-    #     itens_informados = [str(i) for i in range(1,int(parameters["total_itens_pagamento"])+1)]
-    # else:
-    #     itens_informados = [str(int(sequencial)) for sequencial in parameters["itens_informados"]]
-    # for sequencial in itens_informados:
-    #     if parameters["dicionario_itens"][sequencial] in parameters.get("lista_cdas", []):
-    #         cdas.append(parameters["dicionario_itens"][sequencial])
-    #     elif parameters["dicionario_itens"][sequencial] in parameters.get("lista_efs", []):
-    #         efs.append(parameters["dicionario_itens"][sequencial])
+    cdas = []
+    efs = []
+    if parameters.get("todos_itens_informados", None):
+        itens_informados = [str(i) for i in range(1,int(parameters["total_itens_pagamento"])+1)]
+    else:
+        if type(parameters["itens_informados"]) == list:
+            itens_informados = [str(int(sequencial)) for sequencial in parameters["itens_informados"]]
+        else:
+            itens_informados = str(int(parameters["itens_informados"]))
+    for sequencial in itens_informados:
+        if parameters["dicionario_itens"][sequencial] in parameters.get("lista_cdas", []):
+            cdas.append(parameters["dicionario_itens"][sequencial])
+        elif parameters["dicionario_itens"][sequencial] in parameters.get("lista_efs", []):
+            efs.append(parameters["dicionario_itens"][sequencial])
 
-    # parametros_entrada = {
-    #     "origem_solicitação": 0,
-    #     "cdas": cdas,
-    #     "efs": efs,
-    # }
+    parametros_entrada = {
+        "origem_solicitação": 0,
+        "cdas": cdas,
+        "efs": efs,
+    }
 
-    # registros = await pgm_api(endpoint="v2/guiapagamento/emitir/avista", data=parametros_entrada)
+    registros = await pgm_api(endpoint="v2/guiapagamento/emitir/avista", data=parametros_entrada)
 
-    # logger.info(registros)
+    logger.info(registros)
 
-    ### Cria registros falsos já que o endpoint atualmente está quebrado
+    # # # ### Cria registros falsos já que o endpoint atualmente está quebrado
 
-    import random
-    import base64
-    import os
+    # # # import random
+    # # # import base64
+    # # # import os
 
-    # Sample data for realistic-looking values
-    pdf_names = ["guia_2023_1.pdf", "guia_2023_2.pdf", "guia_2023_3.pdf", "guia_2023_4.pdf", "guia_2023_5.pdf"]
+    # # # # Sample data for realistic-looking values
+    # # # pdf_names = ["guia_2023_1.pdf", "guia_2023_2.pdf", "guia_2023_3.pdf", "guia_2023_4.pdf", "guia_2023_5.pdf"]
 
-    registros = []
+    # # # registros = []
 
-    for _ in range(5):
-        pdf_name = random.choice(pdf_names)
-        barcode = ''.join(random.choice("0123456789") for _ in range(9))
-        base64_data = base64.b64encode(os.urandom(32)).decode('utf-8')
+    # # # for _ in range(5):
+    # # #     pdf_name = random.choice(pdf_names)
+    # # #     barcode = ''.join(random.choice("0123456789") for _ in range(9))
+    # # #     base64_data = base64.b64encode(os.urandom(32)).decode('utf-8')
 
-        registros.append({
-            "pdf": pdf_name,
-            "arquivoBase64": base64_data,
-            "codigoDeBarras": barcode
-        })
+    # # #     registros.append({
+    # # #         "pdf": pdf_name,
+    # # #         "arquivoBase64": base64_data,
+    # # #         "codigoDeBarras": barcode
+    # # #     })
     
-    ### Fim do código que cria registros falsos
+    # # # ### Fim do código que cria registros falsos
 
     message_parts = []
     dicionario_guias_pagamento_a_vista = dict()
