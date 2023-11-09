@@ -1479,9 +1479,13 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
         )
 
         # Definindo parâmetros salto_total parcelado e não parcelado
-        parameters["total_nao_parcelado"] = len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) + len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"])
-    
-        parameters["total_parcelado"] = len(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"])
+        parameters["total_nao_parcelado"] = len(
+            registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]
+        ) + len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"])
+
+        parameters["total_parcelado"] = len(
+            registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]
+        )
 
     return message, parameters
 
@@ -1638,13 +1642,15 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
     logger.info(parameters)
 
     guias = []
-    
+
     if parameters.get("todos_itens_informados", None):
-        itens_informados = [str(i) for i in range(1,int(parameters["total_itens_pagamento"])+1)]
+        itens_informados = [str(i) for i in range(1, int(parameters["total_itens_pagamento"]) + 1)]
     else:
         if type(parameters["itens_informados"]) == list:
             # Caso em que o usuario pode informar mais de um item
-            itens_informados = [str(int(sequencial)) for sequencial in parameters["itens_informados"]]
+            itens_informados = [
+                str(int(sequencial)) for sequencial in parameters["itens_informados"]
+            ]
         else:
             # Caso em que o usuario só possui um item
             itens_informados = str(int(parameters["itens_informados"]))
@@ -1658,7 +1664,9 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
         "guias": guias,
     }
 
-    registros = await pgm_api(endpoint="v2/guiapagamento/emitir/regularizacao", data=parametros_entrada)
+    registros = await pgm_api(
+        endpoint="v2/guiapagamento/emitir/regularizacao", data=parametros_entrada
+    )
 
     logger.info(registros)
 
@@ -1683,27 +1691,27 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
     # # #         "arquivoBase64": base64_data,
     # # #         "codigoDeBarras": barcode
     # # #     })
-    
+
     # # # ### Fim do código que cria registros falsos
 
     message_parts = []
     dicionario_guias_pagamento_a_vista = dict()
-    
+
     for i, item in enumerate(registros):
         dicionario_guias_pagamento_a_vista[i] = item
         barcode = item["codigoDeBarras"]
         pdf_file = item["pdf"]
         base64_data = item["arquivoBase64"]
-        
+
         item_message = (
-            f'Código de barras: {barcode}'
-            'SIGNATURE_TYPE_DIVISION_MESSAGE'
-            f'FILE:{pdf_file}:{base64_data}'
-            'SIGNATURE_TYPE_DIVISION_MESSAGE'
+            f"Código de barras: {barcode}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            f"FILE:{pdf_file}:{base64_data}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
         )
 
         message_parts.append(item_message)
 
-    message = ''.join(message_parts)
+    message = "".join(message_parts)
 
     return message, parameters
