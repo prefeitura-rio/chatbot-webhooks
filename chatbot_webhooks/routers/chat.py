@@ -79,6 +79,11 @@ async def input_ascsac(request: Request) -> Response:
             text=message, session_id=session_id, parameters={"phone": phone}
         )
         logger.info(f"{request_id} - Answers: {answer_messages}")
+        answer_messages = [
+            segment
+            for msg in answer_messages
+            for segment in msg.split("SIGNATURE_TYPE_DIVISION_MESSAGE")
+        ]
     except Exception as exc:  # noqa
         logger.exception(f"{request_id} - An error occurred: {exc}")
         raise exc
