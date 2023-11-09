@@ -1442,7 +1442,9 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
                 ):
                     indice += 1
                     itens_pagamento[indice] = cda["cdaId"]
-                    msg += f'\n*{indice}.*\t*Certidão {cda["cdaId"]}* - Saldo {cda["valorSaldoTotal"]}'
+                    msg += (
+                        f'\n*{indice}.*\t*Certidão {cda["cdaId"]}* - Saldo {cda["valorSaldoTotal"]}'
+                    )
                     cdas.append(cda["cdaId"])
                 parameters["lista_cdas"] = cdas
             if len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0:
@@ -1472,7 +1474,9 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
         parameters["total_itens_pagamento"] = indice
         parameters["mensagem_divida_contribuinte"] = msg
         parameters["guias_quantidade_total"] = len(parameters.get("lista_guias", []))
-        parameters["efs_cdas_quantidade_total"] = len(parameters.get("lista_efs",[])) + len(parameters.get("lista_cdas", []))
+        parameters["efs_cdas_quantidade_total"] = len(parameters.get("lista_efs", [])) + len(
+            parameters.get("lista_cdas", [])
+        )
 
         # Definindo parâmetros salto_total parcelado e não parcelado
         if registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"] in (
@@ -1503,6 +1507,7 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
             )
 
     return message, parameters
+
 
 async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
@@ -1578,10 +1583,12 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
     cdas = []
     efs = []
     if parameters.get("todos_itens_informados", None):
-        itens_informados = [str(i) for i in range(1,int(parameters["total_itens_pagamento"])+1)]
+        itens_informados = [str(i) for i in range(1, int(parameters["total_itens_pagamento"]) + 1)]
     else:
         if type(parameters["itens_informados"]) == list:
-            itens_informados = [str(int(sequencial)) for sequencial in parameters["itens_informados"]]
+            itens_informados = [
+                str(int(sequencial)) for sequencial in parameters["itens_informados"]
+            ]
         else:
             itens_informados = str(int(parameters["itens_informados"]))
     for sequencial in itens_informados:
@@ -1621,28 +1628,28 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
     # # #         "arquivoBase64": base64_data,
     # # #         "codigoDeBarras": barcode
     # # #     })
-    
+
     # # # ### Fim do código que cria registros falsos
 
     message_parts = []
     dicionario_guias_pagamento_a_vista = dict()
-    
+
     for i, item in enumerate(registros):
         dicionario_guias_pagamento_a_vista[i] = item
         barcode = item["codigoDeBarras"]
         pdf_file = item["pdf"]
         base64_data = item["arquivoBase64"]
-        
+
         item_message = (
-            f'Código de barras: {barcode}'
-            'SIGNATURE_TYPE_DIVISION_MESSAGE'
-            f'FILE:{pdf_file}:{base64_data}'
-            'SIGNATURE_TYPE_DIVISION_MESSAGE'
+            f"Código de barras: {barcode}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            f"FILE:{pdf_file}:{base64_data}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
         )
 
         message_parts.append(item_message)
 
-    message = ''.join(message_parts)
+    message = "".join(message_parts)
 
     return message, parameters
 
@@ -1653,7 +1660,12 @@ async def da_retorna_codigo_barras(request_data: dict) -> tuple[str, dict]:
 
     logger.info(parameters)
 
-    indice = str(int(len(parameters["dicionario_guias_pagamento_a_vista"]) - parameters["quantidade_guias_pagamento_a_vista"]))
+    indice = str(
+        int(
+            len(parameters["dicionario_guias_pagamento_a_vista"])
+            - parameters["quantidade_guias_pagamento_a_vista"]
+        )
+    )
     message = f'Código de barras: {parameters["dicionario_guias_pagamento_a_vista"][indice]["codigoDeBarras"]}'
 
     return message, parameters
@@ -1665,7 +1677,12 @@ async def da_retorna_arquivo(request_data: dict) -> tuple[str, dict]:
 
     logger.info(parameters)
 
-    indice = str(int(len(parameters["dicionario_guias_pagamento_a_vista"]) - parameters["quantidade_guias_pagamento_a_vista"]))
+    indice = str(
+        int(
+            len(parameters["dicionario_guias_pagamento_a_vista"])
+            - parameters["quantidade_guias_pagamento_a_vista"]
+        )
+    )
     message = f'FILE:{parameters["dicionario_guias_pagamento_a_vista"][indice]["pdf"]}.pdf:{parameters["dicionario_guias_pagamento_a_vista"][indice]["arquivoBase64"]}'
 
     parameters["quantidade_guias_pagamento_a_vista"] -= 1
