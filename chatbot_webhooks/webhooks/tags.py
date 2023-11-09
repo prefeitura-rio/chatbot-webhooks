@@ -1479,32 +1479,13 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
         )
 
         # Definindo parâmetros salto_total parcelado e não parcelado
-        if registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"] in (
-            "R$0,00",
-            "0",
-            "",
-            " ",
-        ):
-            parameters["saldo_total_nao_parcelado"] = 0
-        else:
-            parameters["saldo_total_nao_parcelado"] = float(
-                registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"][2:]
-                .replace(".", "")
-                .replace(",", ".")
-            )
-        if registros["guiasParceladasComSaldoTotal"]["saldoTotalParcelado"] in (
-            "R$0,00",
-            "0",
-            "",
-            " ",
-        ):
-            parameters["saldo_total_parcelado"] = 0
-        else:
-            parameters["saldo_total_parcelado"] = float(
-                registros["guiasParceladasComSaldoTotal"]["saldoTotalParcelado"][2:]
-                .replace(".", "")
-                .replace(",", ".")
-            )
+        parameters["total_nao_parcelado"] = len(
+            registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]
+        ) + len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"])
+
+        parameters["total_parcelado"] = len(
+            registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]
+        )
 
     return message, parameters
 
@@ -1654,37 +1635,83 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
     return message, parameters
 
 
-async def da_retorna_codigo_barras(request_data: dict) -> tuple[str, dict]:
+async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
     message = ""
 
     logger.info(parameters)
 
-    indice = str(
-        int(
-            len(parameters["dicionario_guias_pagamento_a_vista"])
-            - parameters["quantidade_guias_pagamento_a_vista"]
-        )
+    guias = []
+
+    if parameters.get("todos_itens_informados", None):
+        itens_informados = [str(i) for i in range(1, int(parameters["total_itens_pagamento"]) + 1)]
+    else:
+        if type(parameters["itens_informados"]) == list:
+            # Caso em que o usuario pode informar mais de um item
+            itens_informados = [
+                str(int(sequencial)) for sequencial in parameters["itens_informados"]
+            ]
+        else:
+            # Caso em que o usuario só possui um item
+            itens_informados = str(int(parameters["itens_informados"]))
+
+    for sequencial in itens_informados:
+        if parameters["dicionario_itens"][sequencial] in parameters.get("lista_guias", []):
+            guias.append(parameters["dicionario_itens"][sequencial])
+
+    parametros_entrada = {
+        "origem_solicitação": 0,
+        "guias": guias,
+    }
+
+    registros = await pgm_api(
+        endpoint="v2/guiapagamento/emitir/regularizacao", data=parametros_entrada
     )
-    message = f'Código de barras: {parameters["dicionario_guias_pagamento_a_vista"][indice]["codigoDeBarras"]}'
 
-    return message, parameters
+    logger.info(registros)
 
+    # # # ### Cria registros falsos já que o endpoint atualmente está quebrado
 
-async def da_retorna_arquivo(request_data: dict) -> tuple[str, dict]:
-    parameters = request_data["sessionInfo"]["parameters"]
-    message = ""
+    # # # import random
+    # # # import base64
+    # # # import os
 
-    logger.info(parameters)
+    # # # # Sample data for realistic-looking values
+    # # # pdf_names = ["guia_2023_1.pdf", "guia_2023_2.pdf", "guia_2023_3.pdf", "guia_2023_4.pdf", "guia_2023_5.pdf"]
 
-    indice = str(
-        int(
-            len(parameters["dicionario_guias_pagamento_a_vista"])
-            - parameters["quantidade_guias_pagamento_a_vista"]
+    # # # registros = []
+
+    # # # for _ in range(5):
+    # # #     pdf_name = random.choice(pdf_names)
+    # # #     barcode = ''.join(random.choice("0123456789") for _ in range(9))
+    # # #     base64_data = base64.b64encode(os.urandom(32)).decode('utf-8')
+
+    # # #     registros.append({
+    # # #         "pdf": pdf_name,
+    # # #         "arquivoBase64": base64_data,
+    # # #         "codigoDeBarras": barcode
+    # # #     })
+
+    # # # ### Fim do código que cria registros falsos
+
+    message_parts = []
+    dicionario_guias_pagamento_a_vista = dict()
+
+    for i, item in enumerate(registros):
+        dicionario_guias_pagamento_a_vista[i] = item
+        barcode = item["codigoDeBarras"]
+        pdf_file = item["pdf"]
+        base64_data = item["arquivoBase64"]
+
+        item_message = (
+            f"Código de barras: {barcode}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            f"FILE:{pdf_file}:{base64_data}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
         )
-    )
-    message = f'FILE:{parameters["dicionario_guias_pagamento_a_vista"][indice]["pdf"]}.pdf:{parameters["dicionario_guias_pagamento_a_vista"][indice]["arquivoBase64"]}'
 
-    parameters["quantidade_guias_pagamento_a_vista"] -= 1
+        message_parts.append(item_message)
+
+    message = "".join(message_parts)
 
     return message, parameters
