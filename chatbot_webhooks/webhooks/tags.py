@@ -1521,8 +1521,8 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
             "cdas": cdas,
             "efs": efs,
         }
-    except: # noqa
-    # Usuário informou sequenciais inválidos
+    except:  # noqa
+        # Usuário informou sequenciais inválidos
         parameters["da_1_opcao_informada_invalida"] = True
         return message, parameters
 
@@ -1595,7 +1595,7 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
             "origem_solicitação": 0,
             "guias": guias,
         }
-    except: # noqa
+    except:  # noqa
         # Usuário informou sequenciais inválidos
         parameters["da_1_opcao_informada_invalida"] = True
         return message, parameters
