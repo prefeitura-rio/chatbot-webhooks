@@ -1466,7 +1466,7 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
             for i, guia in enumerate(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]):
                 indice += 1
                 itens_pagamento[indice] = guia["numero"]
-                msg += f'\n*{indice}.*\t*Guia nº {guia["numero"]}* - Saldo {guia["valorTotalGuia"]}'
+                msg += f'\n*{indice}.*\t*Guia nº {guia["numero"]}* - Data do Último Pagamento: {guia["dataUltimoPagamento"]}'
                 guias.append(guia["numero"])
             parameters["lista_guias"] = guias
 
@@ -1572,65 +1572,62 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
             ]
         else:
             itens_informados = str(int(parameters["itens_informados"]))
-    for sequencial in itens_informados:
-        if parameters["dicionario_itens"][sequencial] in parameters.get("lista_cdas", []):
-            cdas.append(parameters["dicionario_itens"][sequencial])
-        elif parameters["dicionario_itens"][sequencial] in parameters.get("lista_efs", []):
-            efs.append(parameters["dicionario_itens"][sequencial])
+    
+    try:
+        for sequencial in itens_informados:
+            if parameters["dicionario_itens"][sequencial] in parameters.get("lista_cdas", []):
+                cdas.append(parameters["dicionario_itens"][sequencial])
+            elif parameters["dicionario_itens"][sequencial] in parameters.get("lista_efs", []):
+                efs.append(parameters["dicionario_itens"][sequencial])
 
-    parametros_entrada = {
-        "origem_solicitação": 0,
-        "cdas": cdas,
-        "efs": efs,
-    }
+        parametros_entrada = {
+            "origem_solicitação": 0,
+            "cdas": cdas,
+            "efs": efs,
+        }
+    except:
+    # Usuário informou sequenciais inválidos
+        parameters["da_1_opcao_informada_invalida"] = True
+        return message, parameters
 
     registros = await pgm_api(endpoint="v2/guiapagamento/emitir/avista", data=parametros_entrada)
 
     logger.info(registros)
 
-    # # # ### Cria registros falsos já que o endpoint atualmente está quebrado
+    if "erro" in registros:
+        parameters["api_resposta_sucesso"] = False
+        logger.info(registros["motivos"])
+        parameters["api_resposta_erro"] = True
 
-    # # # import random
-    # # # import base64
-    # # # import os
+        # partes = mensagem_erro.split('BadRequest - ', 1)
+        # # Verificar se há pelo menos duas partes após a divisão
+        # if len(partes) >= 2:
+        #     descricao_erro = partes[1]  # O segundo elemento após a divisão contém a descrição do erro
+        #     descricao_erro = descricao_erro.strip()
 
-    # # # # Sample data for realistic-looking values
-    # # # pdf_names = ["guia_2023_1.pdf", "guia_2023_2.pdf", "guia_2023_3.pdf", "guia_2023_4.pdf", "guia_2023_5.pdf"]
+        parameters[
+            "api_descricao_erro"
+        ] = registros["motivos"][0]
+    else:
+        message_parts = []
+        dicionario_guias_pagamento_a_vista = dict()
 
-    # # # registros = []
+        for i, item in enumerate(registros):
+            dicionario_guias_pagamento_a_vista[i] = item
+            barcode = item["codigoDeBarras"]
+            pdf_file = item["pdf"]
+            base64_data = item["arquivoBase64"]
 
-    # # # for _ in range(5):
-    # # #     pdf_name = random.choice(pdf_names)
-    # # #     barcode = ''.join(random.choice("0123456789") for _ in range(9))
-    # # #     base64_data = base64.b64encode(os.urandom(32)).decode('utf-8')
+            item_message = (
+                f"Código de barras: {barcode}"
+                "SIGNATURE_TYPE_DIVISION_MESSAGE"
+                f"FILE:{pdf_file}:{base64_data}"
+                "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            )
 
-    # # #     registros.append({
-    # # #         "pdf": pdf_name,
-    # # #         "arquivoBase64": base64_data,
-    # # #         "codigoDeBarras": barcode
-    # # #     })
+            message_parts.append(item_message)
 
-    # # # ### Fim do código que cria registros falsos
-
-    message_parts = []
-    dicionario_guias_pagamento_a_vista = dict()
-
-    for i, item in enumerate(registros):
-        dicionario_guias_pagamento_a_vista[i] = item
-        barcode = item["codigoDeBarras"]
-        pdf_file = item["pdf"]
-        base64_data = item["arquivoBase64"]
-
-        item_message = (
-            f"Código de barras: {barcode}"
-            "SIGNATURE_TYPE_DIVISION_MESSAGE"
-            f"FILE:{pdf_file}:{base64_data}"
-            "SIGNATURE_TYPE_DIVISION_MESSAGE"
-        )
-
-        message_parts.append(item_message)
-
-    message = "".join(message_parts)
+        message = "".join(message_parts)
 
     return message, parameters
 
@@ -1655,14 +1652,19 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
             # Caso em que o usuario só possui um item
             itens_informados = str(int(parameters["itens_informados"]))
 
-    for sequencial in itens_informados:
-        if parameters["dicionario_itens"][sequencial] in parameters.get("lista_guias", []):
-            guias.append(parameters["dicionario_itens"][sequencial])
+    try:
+        for sequencial in itens_informados:
+            if parameters["dicionario_itens"][sequencial] in parameters.get("lista_guias", []):
+                guias.append(parameters["dicionario_itens"][sequencial])
 
-    parametros_entrada = {
-        "origem_solicitação": 0,
-        "guias": guias,
-    }
+        parametros_entrada = {
+            "origem_solicitação": 0,
+            "guias": guias,
+        }
+    except:
+        # Usuário informou sequenciais inválidos
+        parameters["da_1_opcao_informada_invalida"] = True
+        return message, parameters
 
     registros = await pgm_api(
         endpoint="v2/guiapagamento/emitir/regularizacao", data=parametros_entrada
@@ -1694,24 +1696,33 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
 
     # # # ### Fim do código que cria registros falsos
 
-    message_parts = []
-    dicionario_guias_pagamento_a_vista = dict()
+    if "erro" in registros:
+        parameters["api_resposta_sucesso"] = False
+        logger.info(registros["motivos"])
+        parameters["api_resposta_erro"] = True
 
-    for i, item in enumerate(registros):
-        dicionario_guias_pagamento_a_vista[i] = item
-        barcode = item["codigoDeBarras"]
-        pdf_file = item["pdf"]
-        base64_data = item["arquivoBase64"]
+        parameters[
+            "api_descricao_erro"
+        ] = registros["motivos"][0]
+    else:
+        message_parts = []
+        dicionario_guias_pagamento_a_vista = dict()
 
-        item_message = (
-            f"Código de barras: {barcode}"
-            "SIGNATURE_TYPE_DIVISION_MESSAGE"
-            f"FILE:{pdf_file}:{base64_data}"
-            "SIGNATURE_TYPE_DIVISION_MESSAGE"
-        )
+        for i, item in enumerate(registros):
+            dicionario_guias_pagamento_a_vista[i] = item
+            barcode = item["codigoDeBarras"]
+            pdf_file = item["pdf"]
+            base64_data = item["arquivoBase64"]
 
-        message_parts.append(item_message)
+            item_message = (
+                f"Código de barras: {barcode}"
+                "SIGNATURE_TYPE_DIVISION_MESSAGE"
+                f"FILE:{pdf_file}:{base64_data}"
+                "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            )
 
-    message = "".join(message_parts)
+            message_parts.append(item_message)
+
+        message = "".join(message_parts)
 
     return message, parameters
