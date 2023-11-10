@@ -26,6 +26,7 @@ from chatbot_webhooks.webhooks.utils import pgm_api
 from chatbot_webhooks.webhooks.utils import validate_CPF
 from chatbot_webhooks.webhooks.utils import validate_email
 from chatbot_webhooks.webhooks.utils import validate_name
+from chatbot_webhooks.webhooks.utils import validador_cpf_cnpj
 
 
 async def ai(request_data: dict) -> str:
@@ -1435,7 +1436,7 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
                 > 0
             ):
                 # CDAS AQUI
-                msg += f"\n\nCDAs não parceladas"
+                msg += "\n\nCDAs não parceladas"
                 cdas = []
                 for i, cda in enumerate(
                     registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]
@@ -1449,7 +1450,7 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
                 parameters["lista_cdas"] = cdas
             if len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0:
                 # EFS AQUI
-                msg += f"\n\nEFs não parceladas"
+                msg += "\n\nEFs não parceladas"
                 efs = []
                 for i, ef in enumerate(
                     registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]
@@ -1461,7 +1462,7 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
                 parameters["lista_efs"] = efs
         if len(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]) > 0:
             # GUIAS AQUI
-            msg += f"\n\nGuias de parcelamento vigentes"
+            msg += "\n\nGuias de parcelamento vigentes"
             guias = []
             for i, guia in enumerate(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]):
                 indice += 1
@@ -1486,71 +1487,6 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
         parameters["total_parcelado"] = len(
             registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]
         )
-
-    return message, parameters
-
-
-async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
-    parameters = request_data["sessionInfo"]["parameters"]
-    message = ""
-
-    mapeia_opcoes_consulta = {
-        1: "inscricaoImobiliaria",
-        2: "cda",
-        3: "cpfCnpj",
-    }
-
-    parametros_entrada = {
-        "origem_solicitação": 0,
-        mapeia_opcoes_consulta[parameters["opcao_consulta_protesto"]]: parameters[
-            "parametro_de_consulta"
-        ],
-    }
-
-    registros = await pgm_api(endpoint="v2/cdas/protestadas", data=parametros_entrada)
-
-    if "erro" in registros:
-        parameters["api_resposta_sucesso"] = False
-        if "BadRequest - Não foram encontradas informações de protesto." in registros["motivos"]:
-            parameters["api_resposta_erro"] = False
-            parameters["api_descricao_erro"] = "Não foram encontradas informações de protesto."
-        else:
-            parameters["api_resposta_erro"] = True
-
-            # partes = mensagem_erro.split('BadRequest - ', 1)
-            # # Verificar se há pelo menos duas partes após a divisão
-            # if len(partes) >= 2:
-            #     descricao_erro = partes[1]  # O segundo elemento após a divisão contém a descrição do erro
-            #     descricao_erro = descricao_erro.strip()
-
-            parameters[
-                "api_descricao_erro"
-            ] = "Ocorreu um erro na sua solicitação, por favor tente mais tarde."
-    else:
-        parameters["api_resposta_sucesso"] = True
-
-        mensagem_cda_protestadas = ""
-
-        # Monta mensagem
-        for i, cda in enumerate(registros):
-            ex_guia = (
-                f'{cda["numExercicio"]}/{cda["guia"]}'
-                if cda.get("guia", "") != ""
-                else cda["numExercicio"]
-            )
-            mensagem_cda_protestadas += f'*{i+1}.*\t*{cda["cdaId"]}* (natureza {cda["naturezaDivida"]} - exerc./guia {ex_guia})'
-            mensagem_cda_protestadas += (
-                f'\n{cda["descricaoMovimentoProtesto"]} Em {cda["dataultimoMovimentoProtesto"]}'
-            )
-            if cda.get("numeroCartorio", "") != "" and cda.get("numeroCartorio", None):
-                mensagem_cda_protestadas += (
-                    f'\nCartório {cda["numeroCartorio"]} - Protocolo nº {cda["numeroProtocolo"]}'
-                )
-            else:
-                pass
-            mensagem_cda_protestadas += "\n\n" if (i + 1) < len(registros) else ""
-
-        parameters["mensagem_cda_protestadas"] = mensagem_cda_protestadas
 
     return message, parameters
 
@@ -1585,7 +1521,7 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
             "cdas": cdas,
             "efs": efs,
         }
-    except:
+    except: # noqa
     # Usuário informou sequenciais inválidos
         parameters["da_1_opcao_informada_invalida"] = True
         return message, parameters
@@ -1661,7 +1597,7 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
             "origem_solicitação": 0,
             "guias": guias,
         }
-    except:
+    except: # noqa
         # Usuário informou sequenciais inválidos
         parameters["da_1_opcao_informada_invalida"] = True
         return message, parameters
