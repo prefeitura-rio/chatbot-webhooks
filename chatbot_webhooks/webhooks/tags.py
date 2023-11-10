@@ -1572,7 +1572,7 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
             ]
         else:
             itens_informados = str(int(parameters["itens_informados"]))
-    
+
     try:
         for sequencial in itens_informados:
             if parameters["dicionario_itens"][sequencial] in parameters.get("lista_cdas", []):
@@ -1586,7 +1586,7 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
             "efs": efs,
         }
     except:
-    # Usuário informou sequenciais inválidos
+        # Usuário informou sequenciais inválidos
         parameters["da_1_opcao_informada_invalida"] = True
         return message, parameters
 
@@ -1605,9 +1605,7 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
         #     descricao_erro = partes[1]  # O segundo elemento após a divisão contém a descrição do erro
         #     descricao_erro = descricao_erro.strip()
 
-        parameters[
-            "api_descricao_erro"
-        ] = registros["motivos"][0]
+        parameters["api_descricao_erro"] = registros["motivos"][0]
     else:
         message_parts = []
         dicionario_guias_pagamento_a_vista = dict()
@@ -1701,9 +1699,7 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
         logger.info(registros["motivos"])
         parameters["api_resposta_erro"] = True
 
-        parameters[
-            "api_descricao_erro"
-        ] = registros["motivos"][0]
+        parameters["api_descricao_erro"] = registros["motivos"][0]
     else:
         message_parts = []
         dicionario_guias_pagamento_a_vista = dict()
