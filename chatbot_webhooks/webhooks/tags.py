@@ -26,7 +26,7 @@ from chatbot_webhooks.webhooks.utils import pgm_api
 from chatbot_webhooks.webhooks.utils import validate_CPF
 from chatbot_webhooks.webhooks.utils import validate_email
 from chatbot_webhooks.webhooks.utils import validate_name
-from chatbot_webhooks.webhooks.utils import validador_cpf_cnpj
+from chatbot_webhooks.webhooks.utils import validate_cpf_cnpj
 
 
 async def ai(request_data: dict) -> str:
