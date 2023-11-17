@@ -853,3 +853,41 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     #     print(i+1)
     #     print(guia)
     #     print("/n/n")
+
+async def get_user_protocols(person_id: str) -> dict:
+    """
+    Returns user protocols from person_id.
+
+    Args:
+        person_id (str): id to be searched.
+
+    Returns:
+        dict: User info in the following format:
+            {
+                "id": 12345678,
+                "name": "Fulano de Tal",
+                "cpf": "12345678911",
+                "email": "fulano@detal.com",
+                "phones": [
+                    "21999999999",
+                ],
+            }
+    """
+    url = get_integrations_url("protocols")
+    key = config.CHATBOT_INTEGRATIONS_KEY
+    payload = {"person_id": person_id}
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                "POST", url, headers=headers, data=json.dumps(payload)
+            ) as response:
+                response.raise_for_status()
+                data = await response.json(content_type=None)
+        return data
+    except Exception as exc:  # noqa
+        logger.error(exc)
+        raise Exception(f"Failed to get user protocols: {exc}") from exc
