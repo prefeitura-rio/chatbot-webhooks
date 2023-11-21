@@ -236,7 +236,7 @@ async def get_ipp_info(parameters: dict) -> bool:
 
             logger.info(
                 f"Após chamar o endpoint neighborhood_id o valor do logradouro_bairro_ipp é: {parameters['logradouro_bairro_ipp']}"
-            )
+            ) 
 
         # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
         # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o
@@ -891,3 +891,56 @@ async def get_user_protocols(person_id: str) -> dict:
     except Exception as exc:  # noqa
         logger.error(exc)
         raise Exception(f"Failed to get user protocols: {exc}") from exc
+
+async def rebi_combinação_permitida(combinação_usuario: list) -> bool:
+    """
+    Avalia se a combinação informada pelo usuário está dentro das combinações permitidas pelo serviço.
+    Exemplo de combinação válida: [4,0,0], por ser menor que [6,0,0], que é permitida.
+    Exemplo de combinação inválida: [1,0,1] por não permitir itens especiais com itens pequenos.
+    Exemplo de combinação inválida: [5,2,0] pois ao informar itens pequenos e grandes, o limite é [5,1,0].
+    """
+    # pequeno, grande, especial
+    COMBINACOES_VALIDAS = [
+        [6,0,0],
+        [5,1,0],
+        [0,2,0],
+        [0,2,1],
+        [0,0,1],
+    ]
+
+    rotulos = ["pequenos", "grandes", "especiais"]
+    unidades = ["unidades", "unidades", "unidades"]
+
+    for combinação_valida in COMBINACOES_VALIDAS:
+        permitido = True
+        justificativa = ""
+
+        for i in range(len(combinação_valida)):
+            logger.info(combinação_valida)
+            if combinação_usuario[i] > combinação_valida[i]:
+                permitido = False
+                justificativa = "Infelizmente, a combinação de itens informados é inválida.\n\n"
+
+                if i == 0:
+                    justificativa += (
+                        f"O limite para itens pequenos é de 6 itens distintos ao solicitar só itens pequenos. "
+                        "Quando solicitados juntamente a itens grandes, o limite é de 5 itens pequenos e 1 grande."
+                    )
+                elif i == 1:
+                    justificativa += (
+                        f"O limite para itens grandes é de 2 itens distintos ao solicitar só itens grandes ou com mais 1 item especial."
+                        f" Quando solicitados juntamente a itens pequenos, o limite é de 5 itens distintos pequenos e 1 grande."
+                    )
+
+                elif i == 2:
+                    justificativa += (
+                        f"O limite para itens especiais é de 1 item, e não podem ser solicitados juntamente a itens pequenos, apenas grandes."
+                        f" Nesse caso, o limite é de 2 itens distintos grandes e 1 especial."
+                    )
+
+                break
+
+        if permitido:
+            return True, ""
+    
+    return False, justificativa

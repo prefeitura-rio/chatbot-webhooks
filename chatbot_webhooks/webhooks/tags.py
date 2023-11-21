@@ -28,6 +28,7 @@ from chatbot_webhooks.webhooks.utils import validate_CPF
 from chatbot_webhooks.webhooks.utils import validate_email
 from chatbot_webhooks.webhooks.utils import validate_name
 from chatbot_webhooks.webhooks.utils import validate_cpf_cnpj
+from chatbot_webhooks.webhooks.utils import rebi_combinação_permitida
 
 
 async def ai(request_data: dict) -> str:
@@ -1119,7 +1120,7 @@ async def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     else:
         logradouro_numero = ""
 
-    print(f"logradouro_numero: {logradouro_numero}, tipo {type(logradouro_numero)}")
+    logger.info(f"logradouro_numero: {logradouro_numero}, tipo {type(logradouro_numero)}")
 
     # Priorioza o ponto de referência identificado pelo Google
     # mas considera o ponto de referência informado pelo usuário caso o Google não tenha identificado algum
@@ -1836,4 +1837,60 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
     # Se não, passou em todos os critérios
     parameters["rebi_elegibilidade_abertura_chamado"] = True
  
+    return message, parameters
+
+async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+    materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
+    materiais_quantidade = parameters["rebi_material_quantidade"]
+    
+    import pandas as pd
+
+    material_info = {'id': {0: 3, 1: 5, 2: 6, 3: 7, 4: 8, 5: 9, 6: 10, 7: 11, 8: 12, 9: 13, 10: 14, 11: 15, 12: 16, 13: 17, 14: 18, 15: 19, 16: 20, 17: 21, 18: 22, 19: 23, 20: 24, 21: 25, 22: 26, 23: 27, 24: 28, 25: 29, 26: 30, 27: 31, 28: 32, 29: 33, 30: 34, 31: 35, 32: 36, 33: 37, 34: 38, 35: 39, 36: 40, 37: 41, 38: 42, 39: 43, 40: 44, 41: 45, 42: 46, 43: 47, 44: 48, 45: 49, 46: 50, 47: 51, 48: 52, 49: 53, 50: 54, 51: 55, 52: 56, 53: 57, 54: 58}, 'nome': {0: 'ar condicionado', 1: 'armário de alumínio de cozinha/banheiro', 2: 'armário + de 4 porta duplex/guarda roupa', 3: 'aspirador de pó', 4: 'banheira', 5: 'bicicleta/velocípede', 6: 'boiler', 7: 'cadeiras/bancos', 8: 'caixonete de porta/janela', 9: 'canos/tubos/trilhos de cortina', 10: 'cama de casal', 11: 'cama de solteiro', 12: 'carpete/tapete/passadeira/colchonete', 13: 'cofre', 14: 'colchão de casal', 15: 'colchão de solteiro', 16: 'computador / impressora', 17: 'entulho', 18: 'escada', 19: 'espelho/quadro/persiana', 20: 'exaustor/sugar/coifa', 21: 'estante/rack', 22: 'fogão', 23: 'forno de microondas/elétrico', 24: 'galhadas', 25: 'garrafas de cerveja / vidro', 26: 'geladeira/freezer', 27: 'gesso / azulejos /cerâmicas', 28: 'grade de madeira ou ferro', 29: 'latão de 200 litros', 30: 'latas/baldes/bacias', 31: 'livros/revistas/jornais/papelão', 32: 'luminária', 33: 'madeiras/caixote/estrados/vulcapiso', 34: 'máquina de lavar roupas/louças', 35: 'máquina de costura', 36: 'mesa', 37: 'outros', 38: 'pedras', 39: 'pias/bancadas/cubas', 40: 'porta/janela/basculante', 41: 'sofá/poltrona', 42: 'tábua de passar roupas', 43: 'tacos', 44: 'tanque de lavagem plástico/louça', 45: 'tanque de concreto', 46: 'telha de aluminio', 47: 'telha de amianto', 48: 'telha francesa/tijolo', 49: 'tronco de árvore', 50: 'vaso de planta com terra', 51: 'vaso sanitário/bidê/lavatório', 52: 'aquecedor/cx descarga', 53: 'aparelho de som/tv/vídeo/vitrola', 54: 'armário peq até 3 portas/cômoda'}, 'limite_itens': {0: 1, 1: 2, 2: 1, 3: 2, 4: 1, 5: 2, 6: 1, 7: 6, 8: 5, 9: 5, 10: 1, 11: 2, 12: 5, 13: 1, 14: 1, 15: 2, 16: 2, 17: 150, 18: 1, 19: 6, 20: 2, 21: 1, 22: 1, 23: 1, 24: 12, 25: 5, 26: 1, 27: 10, 28: 4, 29: 1, 30: 10, 31: 5, 32: 5, 33: 5, 34: 1, 35: 2, 36: 2, 37: 5, 38: 10, 39: 3, 40: 4, 41: 2, 42: 2, 43: 150, 44: 2, 45: 150, 46: 5, 47: 20, 48: 150, 49: 5, 50: 2, 51: 3, 52: 2, 53: 2, 54: 1}, 'unidade_medida': {0: 'unidade', 1: 'unidades', 2: 'unidade desmontada', 3: 'unidades', 4: 'unidade', 5: 'unidades', 6: 'unidade', 7: 'unidades', 8: 'amarrados de até 1,5 m', 9: 'amarrados de até 1,5 m', 10: 'unidade desmontada', 11: 'unidades desmontadas', 12: 'rolos', 13: 'unidade até 60 kg', 14: 'unidade', 15: 'unidades', 16: 'unidades', 17: 'sacos plásticos de até 20 litros', 18: 'unidade', 19: 'unidades', 20: 'unidades', 21: 'unidade desmontada', 22: 'unidade', 23: 'unidade', 24: 'amarrados', 25: 'caixas/engradados até 10kg', 26: 'unidade', 27: 'amarrados/caixas até 10kg', 28: 'unidades', 29: 'unidade', 30: 'latas até 20 litros', 31: 'caixas/sacos/amarrados de até 10 kg', 32: 'unidades', 33: 'amarrados até 1,5m', 34: 'unidade', 35: 'unidades', 36: 'unidades', 37: 'unidades', 38: 'unidades até 10 kg', 39: 'unidades', 40: 'unidades', 41: 'unidades', 42: 'unidades', 43: 'sacos plásticos de até 20 litros', 44: 'unidades', 45: 'sacos plásticos de até 20 litros', 46: 'unidades', 47: 'pedaços até 10 kg', 48: '150 unidades', 49: 'unidades de até 10 kg', 50: 'unidades', 51: 'unidades', 52: 'unidades', 53: 'unidades', 54: 'unidade desmontada'}, 'grupo': {0: 2, 1: 1, 2: 3, 3: 1, 4: 2, 5: 1, 6: 2, 7: 1, 8: 1, 9: 1, 10: 2, 11: 1, 12: 1, 13: 2, 14: 2, 15: 1, 16: 1, 17: 3, 18: 2, 19: 1, 20: 1, 21: 2, 22: 2, 23: 1, 24: 1, 25: 1, 26: 2, 27: 1, 28: 1, 29: 2, 30: 1, 31: 1, 32: 1, 33: 1, 34: 2, 35: 1, 36: 1, 37: 1, 38: 1, 39: 1, 40: 1, 41: 2, 42: 1, 43: 1, 44: 1, 45: 3, 46: 1, 47: 1, 48: 1, 49: 1, 50: 1, 51: 1, 52: 1, 53: 1, 54: 1}}
+    material_info = pd.DataFrame.from_dict(material_info)
+    
+    # Setando variáveis
+    materiais_invalidos = dict()
+    parameters["rebi_combinacao_itens_valida"] = True
+    contagem_grupos = [0, 0, 0]
+    for nome, quantidade in zip(materiais_nomes, materiais_quantidade):
+        logger.info(nome, quantidade)
+        limite_itens = material_info.loc[material_info["nome"] == nome, "limite_itens"].values[0]
+        grupo_item = material_info.loc[material_info["nome"] == nome, "grupo"].values[0]
+        contagem_grupos[grupo_item-1] += 1
+        logger.info(material_info.loc[material_info["nome"]== nome])
+        if quantidade <= limite_itens:
+            logger.info(f"Item {nome} informado em quantia permitida, {quantidade} <= {limite_itens}")
+            pass
+        else:
+            logger.info(f"Item {nome} informado em quantia não permitida, {quantidade} > {limite_itens}")
+            unidade_medida_item = material_info.loc[material_info["nome"] == nome, "unidade_medida"].values[0]
+            materiais_invalidos[nome] = {"informado": quantidade, "permitido": limite_itens, "unidade": unidade_medida_item}
+            parameters["rebi_combinacao_itens_valida"] = False
+    
+    # Quantidades inválidas
+    if not parameters["rebi_combinacao_itens_valida"]:
+        msg = ""
+        for key, value in materiais_invalidos.items():
+            if msg: #Add line breaks
+                msg += "\n\n"
+            msg += (
+                f'Foi informado um *valor acima do limite* para o item {key}. '
+                f'O limite para remoção desse item é de {value["permitido"]} {value["unidade"]}'
+            )
+        parameters["rebi_justificativa_combinacao_invalida"] = msg
+        return message, parameters
+    
+    # Combinação inválida
+    logger.info(f'A combinação informada (pequenos, grandes, especiais) foi {contagem_grupos}')
+    validez_combinacao, justificativa = await rebi_combinação_permitida(contagem_grupos)
+    if not validez_combinacao:
+        logger.info("Combinação inválida")
+        logger.info(justificativa)
+        parameters["rebi_combinacao_itens_valida"] = False
+        parameters["rebi_justificativa_combinacao_invalida"] = justificativa
+    else:
+        logger.info("Combinação válida")
+
     return message, parameters
