@@ -854,6 +854,7 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     #     print(guia)
     #     print("/n/n")
 
+
 async def get_user_protocols(person_id: str) -> dict:
     """
     Returns user protocols from person_id.
@@ -892,6 +893,7 @@ async def get_user_protocols(person_id: str) -> dict:
         logger.error(exc)
         raise Exception(f"Failed to get user protocols: {exc}") from exc
 
+
 async def rebi_combinação_permitida(combinação_usuario: list) -> tuple[bool, str, list]:
     """
     Avalia se a combinação informada pelo usuário está dentro das combinações permitidas pelo serviço.
@@ -901,11 +903,11 @@ async def rebi_combinação_permitida(combinação_usuario: list) -> tuple[bool,
     """
     # pequeno, grande, especial
     COMBINACOES_VALIDAS = [
-        [6,0,0],
-        [5,1,0],
-        [0,2,0],
-        [0,2,1],
-        [0,0,1],
+        [6, 0, 0],
+        [5, 1, 0],
+        [0, 2, 0],
+        [0, 2, 1],
+        [0, 0, 1],
     ]
 
     rotulos = ["pequenos", "grandes", "especiais"]
@@ -914,7 +916,10 @@ async def rebi_combinação_permitida(combinação_usuario: list) -> tuple[bool,
     for combinação_valida in COMBINACOES_VALIDAS:
         # Só faz a comparação caso entre "combinação_usuario" e "combinação_valida" se elas fizerem sentido.
         # Ou seja, "se (combinação_usuario[i] > 0) == (combinação_valida[i] > 0) para todo i.
-        if all((user_val > 0) == (valid_val > 0) for user_val, valid_val in zip(combinação_usuario, combinação_valida)):
+        if all(
+            (user_val > 0) == (valid_val > 0)
+            for user_val, valid_val in zip(combinação_usuario, combinação_valida)
+        ):
             permitido = True
             justificativa = ""
             logger.info(f"ENTREI E A COMBINAÇÃO VÁLIDA É {combinação_valida}")
@@ -943,7 +948,10 @@ async def rebi_combinação_permitida(combinação_usuario: list) -> tuple[bool,
                     break
 
             if permitido:
-                permitido_adicionar = [(valid_val - user_val) for user_val, valid_val in zip(combinação_usuario, combinação_valida)]
+                permitido_adicionar = [
+                    (valid_val - user_val)
+                    for user_val, valid_val in zip(combinação_usuario, combinação_valida)
+                ]
                 return True, "", permitido_adicionar
-    
-    return False, justificativa, [0,0,0]
+
+    return False, justificativa, [0, 0, 0]
