@@ -854,6 +854,7 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     #     print(guia)
     #     print("/n/n")
 
+
 async def get_user_protocols(person_id: str) -> dict:
     """
     Returns user protocols from person_id.
@@ -891,6 +892,7 @@ async def get_user_protocols(person_id: str) -> dict:
     except Exception as exc:  # noqa
         logger.error(exc)
         raise Exception(f"Failed to get user protocols: {exc}") from exc
+<<<<<<< HEAD
 
 async def rebi_combinação_permitida(combinação_usuario: list) -> bool:
     """
@@ -944,3 +946,5 @@ async def rebi_combinação_permitida(combinação_usuario: list) -> bool:
             return True, ""
     
     return False, justificativa
+=======
+>>>>>>> cd9f1dd6f9d1fc279ef2e2c3eb07a1d24cb988e4

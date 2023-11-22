@@ -979,9 +979,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             )
 
             # Definindo parâmetros específicos do serviço
-            specific_attributes = {
-
-            }
+            specific_attributes = {}
 
             try:
                 logger.info("Serviço: Remoção de Entulho e Bens Inservíveis")
@@ -994,7 +992,10 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.info(specific_attributes)
                 logger.info("--------------------")
                 # Joins description
-                descricao_completa = parameters["servico_1746_descricao"] + ". absolutamente qualquer coisa que eu quiser"
+                descricao_completa = (
+                    parameters["servico_1746_descricao"]
+                    + ". absolutamente qualquer coisa que eu quiser"
+                )
 
                 ticket: NewTicket = await new_ticket(
                     address=address,
@@ -1769,11 +1770,12 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
 
     return message, parameters
 
+
 async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
     cpf = parameters["usuario_cpf"]
-    
+
     try:
         logger.info(f"Buscando informações do usuário no SGRC com CPF {cpf}")
         user_info = await get_user_info(cpf)
@@ -1793,14 +1795,16 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
         parameters["rebi_elegibilidade_abertura_chamado"] = True
         logger.info("Usuário não encontrado na base de usuários.")
         return message, parameters
-    
+
     person_id = user_info["id"]
 
     try:
         logger.info(f"Buscando tickets do usuário no SGRC com CPF {cpf} e person_id {person_id}")
         user_protocols = await get_user_protocols(person_id)
     except:  # noqa
-        logger.error(f"Erro ao buscar informações do usuário no SGRC com CPF {cpf} e person_id {person_id}")
+        logger.error(
+            f"Erro ao buscar informações do usuário no SGRC com CPF {cpf} e person_id {person_id}"
+        )
         parameters["rebi_elegibilidade_abertura_chamado"] = False
         parameters["rebi_elegibilidade_abertura_chamado_justificativa"] = "erro_desconhecido"
         return message, parameters
@@ -1822,18 +1826,24 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
             if ticket["classification"] == "1607":
                 if ticket["status"] in STATUS_TIPO_ABERTO:
                     parameters["rebi_elegibilidade_abertura_chamado"] = False
-                    parameters["rebi_elegibilidade_abertura_chamado_justificativa"] = 'chamado_aberto'
-                    logger.info(f'Já existe um ticket aberto: {ticket}')
+                    parameters[
+                        "rebi_elegibilidade_abertura_chamado_justificativa"
+                    ] = "chamado_aberto"
+                    logger.info(f"Já existe um ticket aberto: {ticket}")
                     return message, parameters
                 else:
                     hoje = datetime.now().date()
-                    data_fim = datetime.strptime(ticket['end_date'], '%Y-%m-%d').date()
+                    data_fim = datetime.strptime(ticket["end_date"], "%Y-%m-%d").date()
                     if (hoje - data_fim).days <= 12:
                         parameters["rebi_elegibilidade_abertura_chamado"] = False
-                        parameters["rebi_elegibilidade_abertura_chamado_justificativa"] = "chamado_fechado_12_dias"
-                        logger.info(f'Um ticket desse subtipo foi fechado há {logger.info((hoje - data_fim).days)} dias, valor menor que 12: {ticket}')
+                        parameters[
+                            "rebi_elegibilidade_abertura_chamado_justificativa"
+                        ] = "chamado_fechado_12_dias"
+                        logger.info(
+                            f"Um ticket desse subtipo foi fechado há {logger.info((hoje - data_fim).days)} dias, valor menor que 12: {ticket}"
+                        )
                         return message, parameters
-    
+
     # Se não, passou em todos os critérios
     parameters["rebi_elegibilidade_abertura_chamado"] = True
  
