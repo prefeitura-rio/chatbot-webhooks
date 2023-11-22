@@ -1283,9 +1283,9 @@ async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
     message = ""
 
     mapeia_opcoes_consulta = {
-        1: "inscricaoImobiliaria",
-        2: "cda",
-        3: "cpfCnpj",
+        "1": "inscricaoImobiliaria",
+        "2": "cda",
+        "3": "cpfCnpj",
     }
 
     parametros_entrada = {
