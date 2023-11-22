@@ -971,15 +971,30 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 if "logradouro_id_bairro_ipp" in parameters
                 else "",  # logradouro_id_bairro_ipp
                 number=street_number,
+                complement=parameters.get("endereco_complemento", ""),
                 locality=ponto_referencia,
                 zip_code=parameters["logradouro_cep"]
                 if "logradouro_cep" in parameters and parameters["logradouro_cep"]
                 else "",
-                address_type="Casa",
+                address_type=parameters.get("endereco_tipo", "Casa"), #Se tiver sido capturado pelo fluxo, informado. Se não, é padronizado como Casa.
             )
 
             # Definindo parâmetros específicos do serviço
             specific_attributes = {}
+
+            descricao = "MATERIAIS A REMOVER: "
+            for item, quantidade in zip(parameters.get("rebi_material_nome_informado",[]), parameters.get("rebi_material_quantidade_informada",[])):
+                if descricao != "MATERIAIS A REMOVER: ":
+                    descricao += ", "
+                descricao += f"{item} - {quantidade}"
+            
+            informacoes_complementares = parameters.get("rebi_informacoes_complementares", None)
+            if informacoes_complementares:
+                descricao += (
+                    f". INFORMAÇÕES COMPLEMENTARES: {informacoes_complementares}"
+                )
+            else:
+                descricao += "."
 
             try:
                 logger.info("Serviço: Remoção de Entulho e Bens Inservíveis")
@@ -989,18 +1004,14 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 logger.info(requester)
                 logger.info("--------------------")
                 logger.info("Informações Específicas")
-                logger.info(specific_attributes)
+                logger.info(descricao)
                 logger.info("--------------------")
                 # Joins description
-                descricao_completa = (
-                    parameters["servico_1746_descricao"]
-                    + ". absolutamente qualquer coisa que eu quiser"
-                )
 
                 ticket: NewTicket = await new_ticket(
                     address=address,
                     classification_code=1607,
-                    description=descricao_completa,
+                    description=descricao,
                     requester=requester,
                     specific_attributes=specific_attributes,
                 )
@@ -1849,11 +1860,65 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
  
     return message, parameters
 
+async def rebi_tratador_lista_itens(request_data: dict) -> tuple[str, dict]:
+    from copy import copy
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+    current_materiais_nome = copy(parameters.get("rebi_material_nome_informado", None))
+    current_materiais_quantidade = copy(parameters.get("rebi_material_quantidade_informada", None))
+    new_materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
+    new_materiais_quantidade = parameters["rebi_material_quantidade"]
+
+    logger.info(f"Essa é minha current_materiais_quantidade {parameters.get('rebi_material_quantidade_informada', None)}")
+
+    # Se estamos adicionando itens a listas já existentes
+    if current_materiais_nome and current_materiais_quantidade:
+        for i, (new_name, new_qtd) in enumerate(zip(new_materiais_nomes, new_materiais_quantidade)):
+            if new_name in current_materiais_nome:
+                logger.info(f"O item {new_name} já foi informado antes, somarei as quantidades.")
+                j = current_materiais_nome.index(new_name)
+                logger.info(f"A quantidade do item {new_name} passou de {current_materiais_quantidade[j]} para {current_materiais_quantidade[j] + new_qtd}")
+                current_materiais_quantidade[j] += new_qtd
+            else:
+                logger.info(f"O item {new_name} é novo, então está sendo somado às listas.")
+                current_materiais_nome.append(new_name)
+                current_materiais_quantidade.append(new_qtd)
+
+        logger.info(current_materiais_nome)
+        logger.info(current_materiais_quantidade)
+        
+        parameters["rebi_material_nome"] = current_materiais_nome
+        parameters["rebi_material_quantidade"] = current_materiais_quantidade
+    
+    logger.info(f"Essa é minha current_materiais_quantidade depois {parameters.get('rebi_material_quantidade_informada', None)}")
+
+    return message, parameters
+
 async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
     materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
     materiais_quantidade = parameters["rebi_material_quantidade"]
+    logger.info(f"Essa é minha current_materiais_quantidade {parameters.get('rebi_material_quantidade_informada', None)}")
+
+    GRUPOS_CODIGO_NOME = {
+        1: "pequeno",
+        2: "grande",
+        3: "especial"
+    }
+
+    GRUPOS_CODIGO_NOME_PLURAL = {
+        1: "pequenos",
+        2: "grandes",
+        3: "especiais"
+    }
+
+    GRUPOS_CODIGO_EXEMPLOS = {
+        1: "luminárias, aspiradores, vaso de planta, etc.",
+        2: "camas de casal, fogões, sofá, etc.",
+        3: "entulho, tanque de concreto, armário de 4 portas, etc."
+    }
+    
     
     import pandas as pd
 
@@ -1861,46 +1926,95 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
     material_info = pd.DataFrame.from_dict(material_info)
     
     # Setando variáveis
-    materiais_invalidos = dict()
+    materiais_todos = dict()
     parameters["rebi_combinacao_itens_valida"] = True
     contagem_grupos = [0, 0, 0]
     for nome, quantidade in zip(materiais_nomes, materiais_quantidade):
         logger.info(nome, quantidade)
+        logger.info(material_info.loc[material_info["nome"]== nome])
         limite_itens = material_info.loc[material_info["nome"] == nome, "limite_itens"].values[0]
         grupo_item = material_info.loc[material_info["nome"] == nome, "grupo"].values[0]
+        grupo_item_nome = GRUPOS_CODIGO_NOME[grupo_item]
+        unidade_medida_item = material_info.loc[material_info["nome"] == nome, "unidade_medida"].values[0]
+        materiais_todos[nome] = {"informado": quantidade, "permitido": limite_itens, "unidade": unidade_medida_item, "valido": True, "grupo": grupo_item_nome}
         contagem_grupos[grupo_item-1] += 1
-        logger.info(material_info.loc[material_info["nome"]== nome])
         if quantidade <= limite_itens:
             logger.info(f"Item {nome} informado em quantia permitida, {quantidade} <= {limite_itens}")
             pass
         else:
             logger.info(f"Item {nome} informado em quantia não permitida, {quantidade} > {limite_itens}")
-            unidade_medida_item = material_info.loc[material_info["nome"] == nome, "unidade_medida"].values[0]
-            materiais_invalidos[nome] = {"informado": quantidade, "permitido": limite_itens, "unidade": unidade_medida_item}
+            materiais_todos[nome]["valido"] = False
             parameters["rebi_combinacao_itens_valida"] = False
     
     # Quantidades inválidas
     if not parameters["rebi_combinacao_itens_valida"]:
         msg = ""
-        for key, value in materiais_invalidos.items():
-            if msg: #Add line breaks
-                msg += "\n\n"
-            msg += (
-                f'Foi informado um *valor acima do limite* para o item {key}. '
-                f'O limite para remoção desse item é de {value["permitido"]} {value["unidade"]}'
-            )
+        for key, value in materiais_todos.items():
+            if not value["valido"]:
+                if msg: #Add line breaks
+                    msg += "\n\n"
+                msg += (
+                    f'Foi informado um *valor acima do limite* para o item {key}. '
+                    f'Esse item é classificado como {value["grupo"]}'
+                    f' e o limite para remoção desse item é de {value["permitido"]} {value["unidade"]}.'
+                )
         parameters["rebi_justificativa_combinacao_invalida"] = msg
+        logger.info(f"Essa é minha current_materiais_quantidade depois {parameters.get('rebi_material_quantidade_informada', None)}")
         return message, parameters
     
     # Combinação inválida
     logger.info(f'A combinação informada (pequenos, grandes, especiais) foi {contagem_grupos}')
-    validez_combinacao, justificativa = await rebi_combinação_permitida(contagem_grupos)
+    validez_combinacao, justificativa, permitido_adicionar = await rebi_combinação_permitida(contagem_grupos)
     if not validez_combinacao:
         logger.info("Combinação inválida")
         logger.info(justificativa)
+        descricao_dos_itens = ""
+        for key, value in materiais_todos.items():
+            if descricao_dos_itens: #Add line breaks
+                descricao_dos_itens += "\n\n"
+            else:
+                descricao_dos_itens = "Classificação dos itens informados:\n"
+            descricao_dos_itens += (
+                f'{key.capitalize()}: {value["grupo"]}, Máximo de {value["permitido"]} {value["unidade"]}'
+            )
         parameters["rebi_combinacao_itens_valida"] = False
-        parameters["rebi_justificativa_combinacao_invalida"] = justificativa
+        parameters["rebi_justificativa_combinacao_invalida"] = justificativa + "\n\n" + descricao_dos_itens
+        logger.info(f"Essa é minha current_materiais_quantidade depois {parameters.get('rebi_material_quantidade_informada', None)}")
+        return message, parameters
+    
+    logger.info("Combinação válida")
+    # Gerando mensagem de combinações disponíveis
+    if any(permitido_adicionar) > 0:
+        combinacoes_disponiveis = ""
+        for grupo, valor in enumerate(permitido_adicionar):
+            if combinacoes_disponiveis != "Você ainda pode adicionar:\n" and combinacoes_disponiveis and valor >= 1:
+                logger.info(f"To entrando aqui com {grupo}, {valor} e {combinacoes_disponiveis}")
+                combinacoes_disponiveis += "\n"
+            elif not combinacoes_disponiveis:
+                combinacoes_disponiveis += "Você ainda pode adicionar:\n"
+            if valor > 1:
+                combinacoes_disponiveis += f"{valor} itens {GRUPOS_CODIGO_NOME_PLURAL[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
+            elif valor == 1:
+                combinacoes_disponiveis += f"{valor} item {GRUPOS_CODIGO_NOME[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
+        parameters["rebi_combinacoes_disponiveis_texto"] = combinacoes_disponiveis
+        parameters["rebi_eligibilidade_mais_itens"] = True
     else:
-        logger.info("Combinação válida")
+        parameters["rebi_eligibilidade_mais_itens"] = False
+    
+    parameters["rebi_material_nome_informado"] = materiais_nomes
+    parameters["rebi_material_quantidade_informada"] = materiais_quantidade
+    msg = ""
+    for key, value in materiais_todos.items():
+        if msg: #Add line breaks
+            msg += "\n"
+        try:
+            valor = int(float(value["informado"]))
+        except ValueError:
+            valor = value["informado"]
+        msg += (
+            f'{valor} {key.capitalize()}.'
+        )
+    parameters["rebi_material_informado_descricao"] = msg
 
+    logger.info(f"Essa é minha current_materiais_quantidade depois {parameters.get('rebi_material_quantidade_informada', None)}")
     return message, parameters

@@ -892,7 +892,7 @@ async def get_user_protocols(person_id: str) -> dict:
         logger.error(exc)
         raise Exception(f"Failed to get user protocols: {exc}") from exc
 
-async def rebi_combinação_permitida(combinação_usuario: list) -> bool:
+async def rebi_combinação_permitida(combinação_usuario: list) -> tuple[bool, str, list]:
     """
     Avalia se a combinação informada pelo usuário está dentro das combinações permitidas pelo serviço.
     Exemplo de combinação válida: [4,0,0], por ser menor que [6,0,0], que é permitida.
@@ -912,24 +912,38 @@ async def rebi_combinação_permitida(combinação_usuario: list) -> bool:
     unidades = ["unidades", "unidades", "unidades"]
 
     for combinação_valida in COMBINACOES_VALIDAS:
-        permitido = True
-        justificativa = ""
+        # Só faz a comparação caso entre "combinação_usuario" e "combinação_valida" se elas fizerem sentido.
+        # Ou seja, "se (combinação_usuario[i] > 0) == (combinação_valida[i] > 0) para todo i.
+        if all((user_val > 0) == (valid_val > 0) for user_val, valid_val in zip(combinação_usuario, combinação_valida)):
+            permitido = True
+            justificativa = ""
+            logger.info(f"ENTREI E A COMBINAÇÃO VÁLIDA É {combinação_valida}")
 
-        for i in range(len(combinação_valida)):
-            if combinação_usuario[i] > combinação_valida[i]:
-                permitido = False
-                justificativa += f"O limite para itens {rotulos[i]} é de {combinação_valida[i]} {unidades[i]}"
+            for i in range(len(combinação_valida)):
+                if combinação_usuario[i] > combinação_valida[i]:
+                    permitido = False
+                    justificativa = ""
 
-                if i == 0:
-                    justificativa += f"ao solicitar só itens pequenos. Quando solicitados juntamente a itens grandes, o limite é de 5 itens pequenos e 1 grande."
-                elif i == 1:
-                    justificativa += f"ao solicitar só itens grandes ou com mais 1 item especial. Quando solicitados juntamente a itens pequenos, o limite é de 5 itens pequenos e 1 grande."
-                elif i == 2:
-                    justificativa += f"e não podem ser solicitados juntamente a itens pequenos, apenas grandes. Nesse caso o limite é de 2 itens grandes e 1 especial."
+                    if i == 0:
+                        justificativa += (
+                            "O limite para itens pequenos é de 6 items distintos ao solicitar só itens pequenos."
+                            " Quando solicitados juntamente a itens grandes, o limite é de 5 itens pequenos e 1 grande."
+                        )
+                    elif i == 1:
+                        justificativa += (
+                            "O limite para itens grandes é de 2 items distintos ao solicitar só itens grandes ou com mais 1 item especial. "
+                            "Quando solicitados juntamente a itens pequenos, o limite é de 5 itens pequenos e 1 grande."
+                        )
+                    elif i == 2:
+                        justificativa += (
+                            "O limite para itens especiais é de 1 item e não podem ser solicitados juntamente a itens pequenos, apenas grandes."
+                            " Nesse caso o limite é de 2 itens grandes e 1 especial."
+                        )
 
-                break
+                    break
 
-        if permitido:
-            return True, ""
+            if permitido:
+                permitido_adicionar = [(valid_val - user_val) for user_val, valid_val in zip(combinação_usuario, combinação_valida)]
+                return True, "", permitido_adicionar
     
-    return False, justificativa
+    return False, justificativa, [0,0,0]
