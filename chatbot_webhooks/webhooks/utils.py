@@ -894,14 +894,7 @@ async def get_user_protocols(person_id: str) -> dict:
         raise Exception(f"Failed to get user protocols: {exc}") from exc
 
 
-async def rebi_combinação_permitida(combinação_usuario: list) -> tuple[bool, str, list]:
-    """
-    Avalia se a combinação informada pelo usuário está dentro das combinações permitidas pelo serviço.
-    Exemplo de combinação válida: [4,0,0], por ser menor que [6,0,0], que é permitida.
-    Exemplo de combinação inválida: [1,0,1] por não permitir itens especiais com itens pequenos.
-    Exemplo de combinação inválida: [5,2,0] pois ao informar itens pequenos e grandes, o limite é [5,1,0].
-    """
-    # pequeno, grande, especial
+async def rebi_combinacoes_permitidas(combinação_usuario: list) -> tuple[bool, str, list]:
     COMBINACOES_VALIDAS = [
         [6, 0, 0],
         [5, 1, 0],
@@ -913,22 +906,21 @@ async def rebi_combinação_permitida(combinação_usuario: list) -> tuple[bool,
     rotulos = ["pequenos", "grandes", "especiais"]
     unidades = ["unidades", "unidades", "unidades"]
 
+    combinacoes_validas = []
+
     for combinação_valida in COMBINACOES_VALIDAS:
-        # Só faz a comparação caso entre "combinação_usuario" e "combinação_valida" se elas fizerem sentido.
-        # Ou seja, "se (combinação_usuario[i] > 0) == (combinação_valida[i] > 0) para todo i.
-        if all(
-            (user_val > 0) == (valid_val > 0)
-            for user_val, valid_val in zip(combinação_usuario, combinação_valida)
-        ):
-            permitido = True
-            justificativa = ""
-            logger.info(f"ENTREI E A COMBINAÇÃO VÁLIDA É {combinação_valida}")
+        permitido = True
+        justificativa = ""
 
-            for i in range(len(combinação_valida)):
-                if combinação_usuario[i] > combinação_valida[i]:
-                    permitido = False
-                    justificativa = ""
+        for i in range(len(combinação_valida)):
+            if combinação_usuario[i] > combinação_valida[i]:
+                permitido = False
+                justificativa = ""
 
+                if all(
+                        (user_val > 0) == (valid_val > 0)
+                        for user_val, valid_val in zip(combinação_usuario, combinação_valida)
+                    ):
                     if i == 0:
                         justificativa += (
                             "O limite para itens pequenos é de 6 items distintos ao solicitar só itens pequenos."
@@ -944,14 +936,21 @@ async def rebi_combinação_permitida(combinação_usuario: list) -> tuple[bool,
                             "O limite para itens especiais é de 1 item e não podem ser solicitados juntamente a itens pequenos, apenas grandes."
                             " Nesse caso o limite é de 2 itens grandes e 1 especial."
                         )
+                elif combinação_usuario[0] > 0 and combinação_usuario[2] > 0:
+                    justificativa += (
+                            "Itens pequenos não podem ser solicitados juntamente à itens especiais."
+                        )
 
-                    break
+                break
 
-            if permitido:
-                permitido_adicionar = [
-                    (valid_val - user_val)
-                    for user_val, valid_val in zip(combinação_usuario, combinação_valida)
-                ]
-                return True, "", permitido_adicionar
+        if permitido:
+            permitido_adicionar = [
+                (valid_val - user_val)
+                for user_val, valid_val in zip(combinação_usuario, combinação_valida)
+            ]
+            combinacoes_validas.append(permitido_adicionar)
 
-    return False, justificativa, [0, 0, 0]
+    if combinacoes_validas:
+        return True, "", combinacoes_validas
+    else:
+        return False, justificativa, [0, 0, 0]

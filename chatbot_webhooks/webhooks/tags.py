@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from copy import copy
 from datetime import datetime
 from typing import Tuple
 
@@ -28,7 +29,7 @@ from chatbot_webhooks.webhooks.utils import validate_CPF
 from chatbot_webhooks.webhooks.utils import validate_email
 from chatbot_webhooks.webhooks.utils import validate_name
 from chatbot_webhooks.webhooks.utils import validate_cpf_cnpj
-from chatbot_webhooks.webhooks.utils import rebi_combinação_permitida
+from chatbot_webhooks.webhooks.utils import rebi_combinacoes_permitidas
 
 
 async def ai(request_data: dict) -> str:
@@ -989,9 +990,13 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 parameters.get("rebi_material_nome_informado", []),
                 parameters.get("rebi_material_quantidade_informada", []),
             ):
+                try:
+                    qtd = int(float(quantidade))
+                except ValueError:
+                    qtd = quantidade
                 if descricao != "MATERIAIS A REMOVER: ":
                     descricao += ", "
-                descricao += f"{item} - {quantidade}"
+                descricao += f"{item} - {qtd}"
 
             informacoes_complementares = parameters.get("rebi_informacoes_complementares", None)
             if informacoes_complementares:
@@ -1865,18 +1870,14 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
 
 
 async def rebi_tratador_lista_itens(request_data: dict) -> tuple[str, dict]:
-    from copy import copy
-
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
     current_materiais_nome = copy(parameters.get("rebi_material_nome_informado", None))
     current_materiais_quantidade = copy(parameters.get("rebi_material_quantidade_informada", None))
     new_materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
     new_materiais_quantidade = parameters["rebi_material_quantidade"]
-
-    logger.info(
-        f"Essa é minha current_materiais_quantidade {parameters.get('rebi_material_quantidade_informada', None)}"
-    )
+    parameters["rebi_material_nome_novo"] = copy(new_materiais_nomes)
+    parameters["rebi_material_quantidade_novo"] = copy(new_materiais_quantidade)
 
     # Se estamos adicionando itens a listas já existentes
     if current_materiais_nome and current_materiais_quantidade:
@@ -1899,10 +1900,6 @@ async def rebi_tratador_lista_itens(request_data: dict) -> tuple[str, dict]:
         parameters["rebi_material_nome"] = current_materiais_nome
         parameters["rebi_material_quantidade"] = current_materiais_quantidade
 
-    logger.info(
-        f"Essa é minha current_materiais_quantidade depois {parameters.get('rebi_material_quantidade_informada', None)}"
-    )
-
     return message, parameters
 
 
@@ -1911,9 +1908,6 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
     parameters = request_data["sessionInfo"]["parameters"]
     materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
     materiais_quantidade = parameters["rebi_material_quantidade"]
-    logger.info(
-        f"Essa é minha current_materiais_quantidade {parameters.get('rebi_material_quantidade_informada', None)}"
-    )
 
     GRUPOS_CODIGO_NOME = {1: "pequeno", 2: "grande", 3: "especial"}
 
@@ -1988,7 +1982,7 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
         "nome": {
             0: "ar condicionado",
             1: "armário de alumínio de cozinha/banheiro",
-            2: "armário + de 4 porta duplex/guarda roupa",
+            2: "armário de 4 portas duplex/guarda roupa",
             3: "aspirador de pó",
             4: "banheira",
             5: "bicicleta/velocípede",
@@ -2235,6 +2229,7 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
             "unidade": unidade_medida_item,
             "valido": True,
             "grupo": grupo_item_nome,
+            "grupo_numero": grupo_item,
         }
         contagem_grupos[grupo_item - 1] += 1
         if quantidade <= limite_itens:
@@ -2257,65 +2252,95 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                 if msg:  # Add line breaks
                     msg += "\n\n"
                 msg += (
-                    f"Foi informado um *valor acima do limite* para o item {key}. "
-                    f'Esse item é classificado como {value["grupo"]}'
-                    f' e o limite para remoção desse item é de {value["permitido"]} {value["unidade"]}.'
+                    f'O limite para remoção de {key} é de {value["permitido"]} {value["unidade"]}.'
+                    #f'Esse item é classificado como {value["grupo"]}'
                 )
-        parameters["rebi_justificativa_combinacao_invalida"] = msg
-        logger.info(
-            f"Essa é minha current_materiais_quantidade depois {parameters.get('rebi_material_quantidade_informada', None)}"
-        )
+        parameters["rebi_justificativa_combinacao_invalida"] = msg + "\n\nInforme a quantidade para retirada dentro desse limite."
         return message, parameters
 
     # Combinação inválida
     logger.info(f"A combinação informada (pequenos, grandes, especiais) foi {contagem_grupos}")
-    validez_combinacao, justificativa, permitido_adicionar = await rebi_combinação_permitida(
+    validez_combinacao, justificativa, permitido_adicionar = await rebi_combinacoes_permitidas(
         contagem_grupos
     )
     if not validez_combinacao:
         logger.info("Combinação inválida")
         logger.info(justificativa)
         descricao_dos_itens = ""
-        for key, value in materiais_todos.items():
+        for i, grupo in enumerate(GRUPOS_CODIGO_NOME_PLURAL.values()):
+            first_item = True
             if descricao_dos_itens:  # Add line breaks
-                descricao_dos_itens += "\n\n"
+                descricao_dos_itens += "\n"
             else:
-                descricao_dos_itens = "Classificação dos itens informados:\n"
-            descricao_dos_itens += f'{key.capitalize()}: {value["grupo"]}, Máximo de {value["permitido"]} {value["unidade"]}'
+                descricao_dos_itens = "Você solicitou a retirada de:\n"
+            
+            for key, value in materiais_todos.items():
+                if value["grupo_numero"] == (i+1):
+                    if first_item:
+                        descricao_dos_itens += f"\nItens {grupo}:"
+                        first_item = False
+                    try:
+                        valor = int(float(value["informado"]))
+                    except ValueError:
+                        valor = value["informado"]
+                    descricao_dos_itens += f'\n- {key.capitalize()}: {valor}'
+                else:
+                    continue
+            #descricao_dos_itens += f'{key.capitalize()}: {value["grupo"]}, Máximo de {value["permitido"]} {value["unidade"]}'
         parameters["rebi_combinacao_itens_valida"] = False
         parameters["rebi_justificativa_combinacao_invalida"] = (
-            justificativa + "\n\n" + descricao_dos_itens
-        )
-        logger.info(
-            f"Essa é minha current_materiais_quantidade depois {parameters.get('rebi_material_quantidade_informada', None)}"
+            descricao_dos_itens + "\n\n" + justificativa
         )
         return message, parameters
 
     logger.info("Combinação válida")
     # Gerando mensagem de combinações disponíveis
-    if any(permitido_adicionar) > 0:
-        combinacoes_disponiveis = ""
-        for grupo, valor in enumerate(permitido_adicionar):
-            if (
-                combinacoes_disponiveis != "Você ainda pode adicionar:\n"
-                and combinacoes_disponiveis
-                and valor >= 1
-            ):
-                logger.info(f"To entrando aqui com {grupo}, {valor} e {combinacoes_disponiveis}")
-                combinacoes_disponiveis += "\n"
-            elif not combinacoes_disponiveis:
-                combinacoes_disponiveis += "Você ainda pode adicionar:\n"
-            if valor > 1:
-                combinacoes_disponiveis += f"{valor} itens {GRUPOS_CODIGO_NOME_PLURAL[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
-            elif valor == 1:
-                combinacoes_disponiveis += f"{valor} item {GRUPOS_CODIGO_NOME[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
-        parameters["rebi_combinacoes_disponiveis_texto"] = combinacoes_disponiveis
-        parameters["rebi_eligibilidade_mais_itens"] = True
-    else:
+    logger.info(permitido_adicionar)
+    logger.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    combinacoes_disponiveis = ""
+    for comb in permitido_adicionar:
+        if any(comb) > 0:
+            if combinacoes_disponiveis:
+                combinacoes_disponiveis += "\n*ou*"
+            for grupo, valor in enumerate(comb):
+                if (
+                    combinacoes_disponiveis != "Você ainda pode adicionar:\n"
+                    and combinacoes_disponiveis
+                    and valor >= 1
+                ):
+                    logger.info(f"To entrando aqui com {grupo}, {valor} e {combinacoes_disponiveis}")
+                    combinacoes_disponiveis += "\n"
+                elif not combinacoes_disponiveis:
+                    combinacoes_disponiveis += "Você ainda pode adicionar:\n"
+
+                if valor > 1:
+                    combinacoes_disponiveis += f"- {valor} itens {GRUPOS_CODIGO_NOME_PLURAL[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
+                elif valor == 1:
+                    combinacoes_disponiveis += f"- {valor} item {GRUPOS_CODIGO_NOME[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
+                if grupo > 0 and any(comb[grupo+1:]) > 0:
+                    combinacoes_disponiveis += "\n+"
+            parameters["rebi_combinacoes_disponiveis_texto"] = combinacoes_disponiveis
+            parameters["rebi_eligibilidade_mais_itens"] = True
+    if combinacoes_disponiveis == "":
         parameters["rebi_eligibilidade_mais_itens"] = False
 
-    parameters["rebi_material_nome_informado"] = materiais_nomes
-    parameters["rebi_material_quantidade_informada"] = materiais_quantidade
+    parameters["rebi_material_nome"] = materiais_nomes
+    parameters["rebi_material_quantidade"] = materiais_quantidade
+
+    msg_regras = ""
+    materiais_novos = {key: value for key, value in materiais_todos.items() if key in parameters['rebi_material_nome_novo']}
+    materiais_novos.update({key: {**value, 'informado': parameters['rebi_material_quantidade_novo'][parameters['rebi_material_nome_novo'].index(key)]} for key, value in materiais_novos.items()})
+
+    for key, value in materiais_novos.items():
+        if msg_regras:
+            msg_regras += "\n"
+        try:
+            valor = int(float(value["informado"]))
+        except ValueError:
+            valor = value["informado"]
+        msg_regras += f'\n- {key.capitalize()}: {valor}'
+        msg_regras += f'\nA unidade de medida de {key} considerada pela COMLURB é *{value["unidade"]}* e o *limite é de {value["permitido"]} {value["unidade"]}*.'
+
     msg = ""
     for key, value in materiais_todos.items():
         if msg:  # Add line breaks
@@ -2324,10 +2349,18 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
             valor = int(float(value["informado"]))
         except ValueError:
             valor = value["informado"]
-        msg += f"{valor} {key.capitalize()}."
+        msg += f'\n- {key.capitalize()}: {valor}'
+
+    parameters["rebi_material_informado_regras"] = msg_regras
     parameters["rebi_material_informado_descricao"] = msg
 
-    logger.info(
-        f"Essa é minha current_materiais_quantidade depois {parameters.get('rebi_material_quantidade_informada', None)}"
-    )
+    return message, parameters
+
+async def rebi_confirma_adicao_itens(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+    
+    parameters["rebi_material_nome_informado"] = copy(parameters["rebi_material_nome"])
+    parameters["rebi_material_quantidade_informada"] = copy(parameters["rebi_material_quantidade"])
+
     return message, parameters
