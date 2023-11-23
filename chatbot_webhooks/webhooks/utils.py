@@ -918,9 +918,9 @@ async def rebi_combinacoes_permitidas(combinação_usuario: list) -> tuple[bool,
                 justificativa = ""
 
                 if all(
-                        (user_val > 0) == (valid_val > 0)
-                        for user_val, valid_val in zip(combinação_usuario, combinação_valida)
-                    ):
+                    (user_val > 0) == (valid_val > 0)
+                    for user_val, valid_val in zip(combinação_usuario, combinação_valida)
+                ):
                     if i == 0:
                         justificativa += (
                             "O limite para itens pequenos é de 6 items distintos ao solicitar só itens pequenos."
@@ -938,8 +938,8 @@ async def rebi_combinacoes_permitidas(combinação_usuario: list) -> tuple[bool,
                         )
                 elif combinação_usuario[0] > 0 and combinação_usuario[2] > 0:
                     justificativa += (
-                            "Itens pequenos não podem ser solicitados juntamente à itens especiais."
-                        )
+                        "Itens pequenos não podem ser solicitados juntamente à itens especiais."
+                    )
 
                 break
 

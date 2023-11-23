@@ -2253,9 +2253,11 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                     msg += "\n\n"
                 msg += (
                     f'O limite para remoção de {key} é de {value["permitido"]} {value["unidade"]}.'
-                    #f'Esse item é classificado como {value["grupo"]}'
+                    # f'Esse item é classificado como {value["grupo"]}'
                 )
-        parameters["rebi_justificativa_combinacao_invalida"] = msg + "\n\nInforme a quantidade para retirada dentro desse limite."
+        parameters["rebi_justificativa_combinacao_invalida"] = (
+            msg + "\n\nInforme a quantidade para retirada dentro desse limite."
+        )
         return message, parameters
 
     # Combinação inválida
@@ -2273,9 +2275,9 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                 descricao_dos_itens += "\n"
             else:
                 descricao_dos_itens = "Você solicitou a retirada de:\n"
-            
+
             for key, value in materiais_todos.items():
-                if value["grupo_numero"] == (i+1):
+                if value["grupo_numero"] == (i + 1):
                     if first_item:
                         descricao_dos_itens += f"\nItens {grupo}:"
                         first_item = False
@@ -2283,10 +2285,10 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                         valor = int(float(value["informado"]))
                     except ValueError:
                         valor = value["informado"]
-                    descricao_dos_itens += f'\n- {key.capitalize()}: {valor}'
+                    descricao_dos_itens += f"\n- {key.capitalize()}: {valor}"
                 else:
                     continue
-            #descricao_dos_itens += f'{key.capitalize()}: {value["grupo"]}, Máximo de {value["permitido"]} {value["unidade"]}'
+            # descricao_dos_itens += f'{key.capitalize()}: {value["grupo"]}, Máximo de {value["permitido"]} {value["unidade"]}'
         parameters["rebi_combinacao_itens_valida"] = False
         parameters["rebi_justificativa_combinacao_invalida"] = (
             descricao_dos_itens + "\n\n" + justificativa
@@ -2308,7 +2310,9 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                     and combinacoes_disponiveis
                     and valor >= 1
                 ):
-                    logger.info(f"To entrando aqui com {grupo}, {valor} e {combinacoes_disponiveis}")
+                    logger.info(
+                        f"To entrando aqui com {grupo}, {valor} e {combinacoes_disponiveis}"
+                    )
                     combinacoes_disponiveis += "\n"
                 elif not combinacoes_disponiveis:
                     combinacoes_disponiveis += "Você ainda pode adicionar:\n"
@@ -2317,7 +2321,7 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                     combinacoes_disponiveis += f"- {valor} itens {GRUPOS_CODIGO_NOME_PLURAL[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
                 elif valor == 1:
                     combinacoes_disponiveis += f"- {valor} item {GRUPOS_CODIGO_NOME[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
-                if grupo > 0 and any(comb[grupo+1:]) > 0:
+                if grupo > 0 and any(comb[grupo + 1 :]) > 0:
                     combinacoes_disponiveis += "\n+"
             parameters["rebi_combinacoes_disponiveis_texto"] = combinacoes_disponiveis
             parameters["rebi_eligibilidade_mais_itens"] = True
@@ -2328,8 +2332,22 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
     parameters["rebi_material_quantidade"] = materiais_quantidade
 
     msg_regras = ""
-    materiais_novos = {key: value for key, value in materiais_todos.items() if key in parameters['rebi_material_nome_novo']}
-    materiais_novos.update({key: {**value, 'informado': parameters['rebi_material_quantidade_novo'][parameters['rebi_material_nome_novo'].index(key)]} for key, value in materiais_novos.items()})
+    materiais_novos = {
+        key: value
+        for key, value in materiais_todos.items()
+        if key in parameters["rebi_material_nome_novo"]
+    }
+    materiais_novos.update(
+        {
+            key: {
+                **value,
+                "informado": parameters["rebi_material_quantidade_novo"][
+                    parameters["rebi_material_nome_novo"].index(key)
+                ],
+            }
+            for key, value in materiais_novos.items()
+        }
+    )
 
     for key, value in materiais_novos.items():
         if msg_regras:
@@ -2338,7 +2356,7 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
             valor = int(float(value["informado"]))
         except ValueError:
             valor = value["informado"]
-        msg_regras += f'\n- {key.capitalize()}: {valor}'
+        msg_regras += f"\n- {key.capitalize()}: {valor}"
         msg_regras += f'\nA unidade de medida de {key} considerada pela COMLURB é *{value["unidade"]}* e o *limite é de {value["permitido"]} {value["unidade"]}*.'
 
     msg = ""
@@ -2349,17 +2367,18 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
             valor = int(float(value["informado"]))
         except ValueError:
             valor = value["informado"]
-        msg += f'\n- {key.capitalize()}: {valor}'
+        msg += f"\n- {key.capitalize()}: {valor}"
 
     parameters["rebi_material_informado_regras"] = msg_regras
     parameters["rebi_material_informado_descricao"] = msg
 
     return message, parameters
 
+
 async def rebi_confirma_adicao_itens(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
-    
+
     parameters["rebi_material_nome_informado"] = copy(parameters["rebi_material_nome"])
     parameters["rebi_material_quantidade_informada"] = copy(parameters["rebi_material_quantidade"])
 
