@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
+from copy import copy
 from datetime import datetime
 from typing import Tuple
 
 import aiohttp
 from loguru import logger
+import pandas as pd
 from prefeitura_rio.integrations.sgrc.exceptions import SGRCBusinessRuleException
 from prefeitura_rio.integrations.sgrc.exceptions import SGRCDuplicateTicketException
 from prefeitura_rio.integrations.sgrc.exceptions import SGRCEquivalentTicketException
@@ -19,6 +21,7 @@ from unidecode import unidecode
 from chatbot_webhooks import config
 from chatbot_webhooks.webhooks.utils import get_ipp_info
 from chatbot_webhooks.webhooks.utils import get_user_info
+from chatbot_webhooks.webhooks.utils import get_user_protocols
 from chatbot_webhooks.webhooks.utils import google_geolocator
 from chatbot_webhooks.webhooks.utils import mask_email
 from chatbot_webhooks.webhooks.utils import new_ticket
@@ -27,6 +30,7 @@ from chatbot_webhooks.webhooks.utils import validate_CPF
 from chatbot_webhooks.webhooks.utils import validate_email
 from chatbot_webhooks.webhooks.utils import validate_name
 from chatbot_webhooks.webhooks.utils import validate_cpf_cnpj
+from chatbot_webhooks.webhooks.utils import rebi_combinacoes_permitidas
 
 
 async def ai(request_data: dict) -> str:
@@ -934,6 +938,133 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_interno"
             return message, parameters
+        #
+        # 1607 - Remoção de Entulho e Bens Inservíveis
+        #
+        elif str(codigo_servico_1746) == "1607":
+            logger.info(parameters)
+
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                complement=parameters.get("endereco_complemento", ""),
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+                address_type=parameters.get(
+                    "endereco_tipo", "Casa"
+                ),  # Se tiver sido capturado pelo fluxo, informado. Se não, é padronizado como Casa.
+            )
+
+            # Definindo parâmetros específicos do serviço
+            specific_attributes = {}
+
+            descricao = "MATERIAIS A REMOVER: "
+            for item, quantidade in zip(
+                parameters.get("rebi_material_nome_informado", []),
+                parameters.get("rebi_material_quantidade_informada", []),
+            ):
+                try:
+                    qtd = int(float(quantidade))
+                except ValueError:
+                    qtd = quantidade
+                if descricao != "MATERIAIS A REMOVER: ":
+                    descricao += ", "
+                descricao += f"{item} - {qtd}"
+
+            informacoes_complementares = parameters.get("rebi_informacoes_complementares", None)
+            if informacoes_complementares:
+                descricao += f". INFORMAÇÕES COMPLEMENTARES: {informacoes_complementares}"
+            else:
+                descricao += "."
+
+            try:
+                logger.info("Serviço: Remoção de Entulho e Bens Inservíveis")
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(descricao)
+                logger.info("--------------------")
+                # Joins description
+
+                ticket: NewTicket = await new_ticket(
+                    address=address,
+                    classification_code=1607,
+                    description=descricao,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
         else:
             raise NotImplementedError("Classification code not implemented")
     except:  # noqa
@@ -1010,7 +1141,7 @@ async def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
     else:
         logradouro_numero = ""
 
-    print(f"logradouro_numero: {logradouro_numero}, tipo {type(logradouro_numero)}")
+    logger.info(f"logradouro_numero: {logradouro_numero}, tipo {type(logradouro_numero)}")
 
     # Priorioza o ponto de referência identificado pelo Google
     # mas considera o ponto de referência informado pelo usuário caso o Google não tenha identificado algum
@@ -1656,5 +1787,598 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
             message_parts.append(item_message)
 
         message = "".join(message_parts)
+
+    return message, parameters
+
+
+async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+    cpf = parameters["usuario_cpf"]
+
+    try:
+        logger.info(f"Buscando informações do usuário no SGRC com CPF {cpf}")
+        user_info = await get_user_info(cpf)
+    except Exception as e:  # noqa
+        logger.error(f"Erro ao buscar informações do usuário no SGRC com CPF {cpf}")
+        if "message='NOT FOUND'" in str(e):
+            parameters["rebi_elegibilidade_abertura_chamado"] = True
+            logger.info("Usuário não encontrado na base de usuários.")
+            return message, parameters
+        parameters["rebi_elegibilidade_abertura_chamado"] = False
+        parameters["rebi_elegibilidade_abertura_chamado_justificativa"] = "erro_desconhecido"
+        return message, parameters
+
+    logger.info(f"Retorno do SGRC: {user_info}")
+
+    if not user_info["id"]:
+        parameters["rebi_elegibilidade_abertura_chamado"] = True
+        logger.info("Usuário não encontrado na base de usuários.")
+        return message, parameters
+
+    person_id = user_info["id"]
+
+    try:
+        logger.info(f"Buscando tickets do usuário no SGRC com CPF {cpf} e person_id {person_id}")
+        user_protocols = await get_user_protocols(person_id)
+    except:  # noqa
+        logger.error(
+            f"Erro ao buscar informações do usuário no SGRC com CPF {cpf} e person_id {person_id}"
+        )
+        parameters["rebi_elegibilidade_abertura_chamado"] = False
+        parameters["rebi_elegibilidade_abertura_chamado_justificativa"] = "erro_desconhecido"
+        return message, parameters
+
+    logger.info(user_protocols)
+
+    STATUS_TIPO_ABERTO = [
+        "Aberto",
+        "Em Andamento",
+        "Em andamento privado",
+        "Encaminhado à Comlurb - resíduo",
+        "Pendente",
+    ]
+
+    for protocol in user_protocols:
+        tickets = protocol["tickets"]
+        for ticket in tickets:
+            # Se o serviço é Remoção de Entulho
+            if ticket["classification"] == "1607":
+                if ticket["status"] in STATUS_TIPO_ABERTO:
+                    parameters["rebi_elegibilidade_abertura_chamado"] = False
+                    parameters[
+                        "rebi_elegibilidade_abertura_chamado_justificativa"
+                    ] = "chamado_aberto"
+                    logger.info(f"Já existe um ticket aberto: {ticket}")
+                    return message, parameters
+                else:
+                    hoje = datetime.now().date()
+                    data_fim = datetime.strptime(ticket["end_date"], "%Y-%m-%d").date()
+                    if (hoje - data_fim).days <= 12:
+                        parameters["rebi_elegibilidade_abertura_chamado"] = False
+                        parameters[
+                            "rebi_elegibilidade_abertura_chamado_justificativa"
+                        ] = "chamado_fechado_12_dias"
+                        logger.info(
+                            f"Um ticket desse subtipo foi fechado há {logger.info((hoje - data_fim).days)} dias, valor menor que 12: {ticket}"
+                        )
+                        return message, parameters
+
+    # Se não, passou em todos os critérios
+    parameters["rebi_elegibilidade_abertura_chamado"] = True
+
+    return message, parameters
+
+
+async def rebi_tratador_lista_itens(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+    current_materiais_nome = copy(parameters.get("rebi_material_nome_informado", None))
+    current_materiais_quantidade = copy(parameters.get("rebi_material_quantidade_informada", None))
+    new_materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
+    new_materiais_quantidade = parameters["rebi_material_quantidade"]
+    parameters["rebi_material_nome_novo"] = copy(new_materiais_nomes)
+    parameters["rebi_material_quantidade_novo"] = copy(new_materiais_quantidade)
+
+    # Se estamos adicionando itens a listas já existentes
+    if current_materiais_nome and current_materiais_quantidade:
+        for i, (new_name, new_qtd) in enumerate(zip(new_materiais_nomes, new_materiais_quantidade)):
+            if new_name in current_materiais_nome:
+                logger.info(f"O item {new_name} já foi informado antes, somarei as quantidades.")
+                j = current_materiais_nome.index(new_name)
+                logger.info(
+                    f"A quantidade do item {new_name} passou de {current_materiais_quantidade[j]} para {current_materiais_quantidade[j] + new_qtd}"
+                )
+                current_materiais_quantidade[j] += new_qtd
+            else:
+                logger.info(f"O item {new_name} é novo, então está sendo somado às listas.")
+                current_materiais_nome.append(new_name)
+                current_materiais_quantidade.append(new_qtd)
+
+        logger.info(current_materiais_nome)
+        logger.info(current_materiais_quantidade)
+
+        parameters["rebi_material_nome"] = current_materiais_nome
+        parameters["rebi_material_quantidade"] = current_materiais_quantidade
+
+    return message, parameters
+
+
+async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+    materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
+    materiais_quantidade = parameters["rebi_material_quantidade"]
+
+    GRUPOS_CODIGO_NOME = {1: "pequeno", 2: "grande", 3: "especial"}
+
+    GRUPOS_CODIGO_NOME_PLURAL = {1: "pequenos", 2: "grandes", 3: "especiais"}
+
+    GRUPOS_CODIGO_EXEMPLOS = {
+        1: "luminárias, aspiradores, vaso de planta, etc.",
+        2: "camas de casal, fogões, sofá, etc.",
+        3: "entulho, tanque de concreto, armário de 4 portas, etc.",
+    }
+
+    material_info = {
+        "id": {
+            0: 3,
+            1: 5,
+            2: 6,
+            3: 7,
+            4: 8,
+            5: 9,
+            6: 10,
+            7: 11,
+            8: 12,
+            9: 13,
+            10: 14,
+            11: 15,
+            12: 16,
+            13: 17,
+            14: 18,
+            15: 19,
+            16: 20,
+            17: 21,
+            18: 22,
+            19: 23,
+            20: 24,
+            21: 25,
+            22: 26,
+            23: 27,
+            24: 28,
+            25: 29,
+            26: 30,
+            27: 31,
+            28: 32,
+            29: 33,
+            30: 34,
+            31: 35,
+            32: 36,
+            33: 37,
+            34: 38,
+            35: 39,
+            36: 40,
+            37: 41,
+            38: 42,
+            39: 43,
+            40: 44,
+            41: 45,
+            42: 46,
+            43: 47,
+            44: 48,
+            45: 49,
+            46: 50,
+            47: 51,
+            48: 52,
+            49: 53,
+            50: 54,
+            51: 55,
+            52: 56,
+            53: 57,
+            54: 58,
+        },
+        "nome": {
+            0: "ar condicionado",
+            1: "armário de alumínio de cozinha/banheiro",
+            2: "armário de 4 portas duplex/guarda roupa",
+            3: "aspirador de pó",
+            4: "banheira",
+            5: "bicicleta/velocípede",
+            6: "boiler",
+            7: "cadeiras/bancos",
+            8: "caixonete de porta/janela",
+            9: "canos/tubos/trilhos de cortina",
+            10: "cama de casal",
+            11: "cama de solteiro",
+            12: "carpete/tapete/passadeira/colchonete",
+            13: "cofre",
+            14: "colchão de casal",
+            15: "colchão de solteiro",
+            16: "computador / impressora",
+            17: "entulho",
+            18: "escada",
+            19: "espelho/quadro/persiana",
+            20: "exaustor/sugar/coifa",
+            21: "estante/rack",
+            22: "fogão",
+            23: "forno de microondas/elétrico",
+            24: "galhadas",
+            25: "garrafas de cerveja / vidro",
+            26: "geladeira/freezer",
+            27: "gesso / azulejos /cerâmicas",
+            28: "grade de madeira ou ferro",
+            29: "latão de 200 litros",
+            30: "latas/baldes/bacias",
+            31: "livros/revistas/jornais/papelão",
+            32: "luminária",
+            33: "madeiras/caixote/estrados/vulcapiso",
+            34: "máquina de lavar roupas/louças",
+            35: "máquina de costura",
+            36: "mesa",
+            37: "outros",
+            38: "pedras",
+            39: "pias/bancadas/cubas",
+            40: "porta/janela/basculante",
+            41: "sofá/poltrona",
+            42: "tábua de passar roupas",
+            43: "tacos",
+            44: "tanque de lavagem plástico/louça",
+            45: "tanque de concreto",
+            46: "telha de aluminio",
+            47: "telha de amianto",
+            48: "telha francesa/tijolo",
+            49: "tronco de árvore",
+            50: "vaso de planta com terra",
+            51: "vaso sanitário/bidê/lavatório",
+            52: "aquecedor/cx descarga",
+            53: "aparelho de som/tv/vídeo/vitrola",
+            54: "armário peq até 3 portas/cômoda",
+        },
+        "limite_itens": {
+            0: 1,
+            1: 2,
+            2: 1,
+            3: 2,
+            4: 1,
+            5: 2,
+            6: 1,
+            7: 6,
+            8: 5,
+            9: 5,
+            10: 1,
+            11: 2,
+            12: 5,
+            13: 1,
+            14: 1,
+            15: 2,
+            16: 2,
+            17: 150,
+            18: 1,
+            19: 6,
+            20: 2,
+            21: 1,
+            22: 1,
+            23: 1,
+            24: 12,
+            25: 5,
+            26: 1,
+            27: 10,
+            28: 4,
+            29: 1,
+            30: 10,
+            31: 5,
+            32: 5,
+            33: 5,
+            34: 1,
+            35: 2,
+            36: 2,
+            37: 5,
+            38: 10,
+            39: 3,
+            40: 4,
+            41: 2,
+            42: 2,
+            43: 150,
+            44: 2,
+            45: 150,
+            46: 5,
+            47: 20,
+            48: 150,
+            49: 5,
+            50: 2,
+            51: 3,
+            52: 2,
+            53: 2,
+            54: 1,
+        },
+        "unidade_medida": {
+            0: "unidade",
+            1: "unidades",
+            2: "unidade desmontada",
+            3: "unidades",
+            4: "unidade",
+            5: "unidades",
+            6: "unidade",
+            7: "unidades",
+            8: "amarrados de até 1,5 m",
+            9: "amarrados de até 1,5 m",
+            10: "unidade desmontada",
+            11: "unidades desmontadas",
+            12: "rolos",
+            13: "unidade até 60 kg",
+            14: "unidade",
+            15: "unidades",
+            16: "unidades",
+            17: "sacos plásticos de até 20 litros",
+            18: "unidade",
+            19: "unidades",
+            20: "unidades",
+            21: "unidade desmontada",
+            22: "unidade",
+            23: "unidade",
+            24: "amarrados",
+            25: "caixas/engradados até 10kg",
+            26: "unidade",
+            27: "amarrados/caixas até 10kg",
+            28: "unidades",
+            29: "unidade",
+            30: "latas até 20 litros",
+            31: "caixas/sacos/amarrados de até 10 kg",
+            32: "unidades",
+            33: "amarrados até 1,5m",
+            34: "unidade",
+            35: "unidades",
+            36: "unidades",
+            37: "unidades",
+            38: "unidades até 10 kg",
+            39: "unidades",
+            40: "unidades",
+            41: "unidades",
+            42: "unidades",
+            43: "sacos plásticos de até 20 litros",
+            44: "unidades",
+            45: "sacos plásticos de até 20 litros",
+            46: "unidades",
+            47: "pedaços até 10 kg",
+            48: "150 unidades",
+            49: "unidades de até 10 kg",
+            50: "unidades",
+            51: "unidades",
+            52: "unidades",
+            53: "unidades",
+            54: "unidade desmontada",
+        },
+        "grupo": {
+            0: 2,
+            1: 1,
+            2: 3,
+            3: 1,
+            4: 2,
+            5: 1,
+            6: 2,
+            7: 1,
+            8: 1,
+            9: 1,
+            10: 2,
+            11: 1,
+            12: 1,
+            13: 2,
+            14: 2,
+            15: 1,
+            16: 1,
+            17: 3,
+            18: 2,
+            19: 1,
+            20: 1,
+            21: 2,
+            22: 2,
+            23: 1,
+            24: 1,
+            25: 1,
+            26: 2,
+            27: 1,
+            28: 1,
+            29: 2,
+            30: 1,
+            31: 1,
+            32: 1,
+            33: 1,
+            34: 2,
+            35: 1,
+            36: 1,
+            37: 1,
+            38: 1,
+            39: 1,
+            40: 1,
+            41: 2,
+            42: 1,
+            43: 1,
+            44: 1,
+            45: 3,
+            46: 1,
+            47: 1,
+            48: 1,
+            49: 1,
+            50: 1,
+            51: 1,
+            52: 1,
+            53: 1,
+            54: 1,
+        },
+    }
+    material_info = pd.DataFrame.from_dict(material_info)
+
+    # Setando variáveis
+    materiais_todos = dict()
+    parameters["rebi_combinacao_itens_valida"] = True
+    contagem_grupos = [0, 0, 0]
+    for nome, quantidade in zip(materiais_nomes, materiais_quantidade):
+        logger.info(nome, quantidade)
+        logger.info(material_info.loc[material_info["nome"] == nome])
+        limite_itens = material_info.loc[material_info["nome"] == nome, "limite_itens"].values[0]
+        grupo_item = material_info.loc[material_info["nome"] == nome, "grupo"].values[0]
+        grupo_item_nome = GRUPOS_CODIGO_NOME[grupo_item]
+        unidade_medida_item = material_info.loc[
+            material_info["nome"] == nome, "unidade_medida"
+        ].values[0]
+        materiais_todos[nome] = {
+            "informado": quantidade,
+            "permitido": limite_itens,
+            "unidade": unidade_medida_item,
+            "valido": True,
+            "grupo": grupo_item_nome,
+            "grupo_numero": grupo_item,
+        }
+        contagem_grupos[grupo_item - 1] += 1
+        if quantidade <= limite_itens:
+            logger.info(
+                f"Item {nome} informado em quantia permitida, {quantidade} <= {limite_itens}"
+            )
+            pass
+        else:
+            logger.info(
+                f"Item {nome} informado em quantia não permitida, {quantidade} > {limite_itens}"
+            )
+            materiais_todos[nome]["valido"] = False
+            parameters["rebi_combinacao_itens_valida"] = False
+
+    # Quantidades inválidas
+    if not parameters["rebi_combinacao_itens_valida"]:
+        msg = ""
+        for key, value in materiais_todos.items():
+            if not value["valido"]:
+                if msg:  # Add line breaks
+                    msg += "\n\n"
+                msg += (
+                    f'O limite para remoção de {key} é de {value["permitido"]} {value["unidade"]}.'
+                    # f'Esse item é classificado como {value["grupo"]}'
+                )
+        parameters["rebi_justificativa_combinacao_invalida"] = (
+            msg + "\n\nInforme a quantidade para retirada dentro desse limite."
+        )
+        return message, parameters
+
+    # Combinação inválida
+    logger.info(f"A combinação informada (pequenos, grandes, especiais) foi {contagem_grupos}")
+    validez_combinacao, justificativa, permitido_adicionar = await rebi_combinacoes_permitidas(
+        contagem_grupos
+    )
+    if not validez_combinacao:
+        logger.info("Combinação inválida")
+        logger.info(justificativa)
+        descricao_dos_itens = ""
+        for i, grupo in enumerate(GRUPOS_CODIGO_NOME_PLURAL.values()):
+            first_item = True
+            if descricao_dos_itens:  # Add line breaks
+                descricao_dos_itens += "\n"
+            else:
+                descricao_dos_itens = "Você solicitou a retirada de:\n"
+
+            for key, value in materiais_todos.items():
+                if value["grupo_numero"] == (i + 1):
+                    if first_item:
+                        descricao_dos_itens += f"\nItens {grupo}:"
+                        first_item = False
+                    try:
+                        valor = int(float(value["informado"]))
+                    except ValueError:
+                        valor = value["informado"]
+                    descricao_dos_itens += f"\n- {key.capitalize()}: {valor}"
+                else:
+                    continue
+            # descricao_dos_itens += f'{key.capitalize()}: {value["grupo"]}, Máximo de {value["permitido"]} {value["unidade"]}'
+        parameters["rebi_combinacao_itens_valida"] = False
+        parameters["rebi_justificativa_combinacao_invalida"] = (
+            descricao_dos_itens + "\n\n" + justificativa
+        )
+        return message, parameters
+
+    logger.info("Combinação válida")
+    # Gerando mensagem de combinações disponíveis
+    logger.info(permitido_adicionar)
+    logger.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+    combinacoes_disponiveis = ""
+    for comb in permitido_adicionar:
+        if any(comb) > 0:
+            if combinacoes_disponiveis:
+                combinacoes_disponiveis += "\n*ou*"
+            for grupo, valor in enumerate(comb):
+                if (
+                    combinacoes_disponiveis != "Você ainda pode adicionar:\n"
+                    and combinacoes_disponiveis
+                    and valor >= 1
+                ):
+                    logger.info(
+                        f"To entrando aqui com {grupo}, {valor} e {combinacoes_disponiveis}"
+                    )
+                    combinacoes_disponiveis += "\n"
+                elif not combinacoes_disponiveis:
+                    combinacoes_disponiveis += "Você ainda pode adicionar:\n"
+
+                if valor > 1:
+                    combinacoes_disponiveis += f"- {valor} itens {GRUPOS_CODIGO_NOME_PLURAL[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
+                elif valor == 1:
+                    combinacoes_disponiveis += f"- {valor} item {GRUPOS_CODIGO_NOME[grupo+1]}. Exemplo: {GRUPOS_CODIGO_EXEMPLOS[grupo+1]}"
+                if grupo > 0 and any(comb[grupo + 1 :]) > 0:
+                    combinacoes_disponiveis += "\n+"
+            parameters["rebi_combinacoes_disponiveis_texto"] = combinacoes_disponiveis
+            parameters["rebi_eligibilidade_mais_itens"] = True
+    if combinacoes_disponiveis == "":
+        parameters["rebi_eligibilidade_mais_itens"] = False
+
+    parameters["rebi_material_nome"] = materiais_nomes
+    parameters["rebi_material_quantidade"] = materiais_quantidade
+
+    msg_regras = ""
+    materiais_novos = {
+        key: value
+        for key, value in materiais_todos.items()
+        if key in parameters["rebi_material_nome_novo"]
+    }
+    materiais_novos.update(
+        {
+            key: {
+                **value,
+                "informado": parameters["rebi_material_quantidade_novo"][
+                    parameters["rebi_material_nome_novo"].index(key)
+                ],
+            }
+            for key, value in materiais_novos.items()
+        }
+    )
+
+    for key, value in materiais_novos.items():
+        if msg_regras:
+            msg_regras += "\n"
+        try:
+            valor = int(float(value["informado"]))
+        except ValueError:
+            valor = value["informado"]
+        msg_regras += f"\n- {key.capitalize()}: {valor}"
+        msg_regras += f'\nA unidade de medida de {key} considerada pela COMLURB é *{value["unidade"]}* e o *limite é de {value["permitido"]} {value["unidade"]}*.'
+
+    msg = ""
+    for key, value in materiais_todos.items():
+        if msg:  # Add line breaks
+            msg += "\n"
+        try:
+            valor = int(float(value["informado"]))
+        except ValueError:
+            valor = value["informado"]
+        msg += f"\n- {key.capitalize()}: {valor}"
+
+    parameters["rebi_material_informado_regras"] = msg_regras
+    parameters["rebi_material_informado_descricao"] = msg
+
+    return message, parameters
+
+
+async def rebi_confirma_adicao_itens(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+
+    parameters["rebi_material_nome_informado"] = copy(parameters["rebi_material_nome"])
+    parameters["rebi_material_quantidade_informada"] = copy(parameters["rebi_material_quantidade"])
 
     return message, parameters

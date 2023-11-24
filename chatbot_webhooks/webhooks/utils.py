@@ -853,3 +853,104 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     #     print(i+1)
     #     print(guia)
     #     print("/n/n")
+
+
+async def get_user_protocols(person_id: str) -> dict:
+    """
+    Returns user protocols from person_id.
+
+    Args:
+        person_id (str): id to be searched.
+
+    Returns:
+        dict: User info in the following format:
+            {
+                "id": 12345678,
+                "name": "Fulano de Tal",
+                "cpf": "12345678911",
+                "email": "fulano@detal.com",
+                "phones": [
+                    "21999999999",
+                ],
+            }
+    """
+    url = get_integrations_url("protocols")
+    key = config.CHATBOT_INTEGRATIONS_KEY
+    payload = {"person_id": person_id}
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                "POST", url, headers=headers, data=json.dumps(payload)
+            ) as response:
+                response.raise_for_status()
+                data = await response.json(content_type=None)
+        return data
+    except Exception as exc:  # noqa
+        logger.error(exc)
+        raise Exception(f"Failed to get user protocols: {exc}") from exc
+
+
+async def rebi_combinacoes_permitidas(combinação_usuario: list) -> tuple[bool, str, list]:
+    COMBINACOES_VALIDAS = [
+        [6, 0, 0],
+        [5, 1, 0],
+        [0, 2, 0],
+        [0, 2, 1],
+        [0, 0, 1],
+    ]
+
+    rotulos = ["pequenos", "grandes", "especiais"]
+    unidades = ["unidades", "unidades", "unidades"]
+
+    combinacoes_validas = []
+
+    for combinação_valida in COMBINACOES_VALIDAS:
+        permitido = True
+        justificativa = ""
+
+        for i in range(len(combinação_valida)):
+            if combinação_usuario[i] > combinação_valida[i]:
+                permitido = False
+                justificativa = ""
+
+                if all(
+                    (user_val > 0) == (valid_val > 0)
+                    for user_val, valid_val in zip(combinação_usuario, combinação_valida)
+                ):
+                    if i == 0:
+                        justificativa += (
+                            "O limite para itens pequenos é de 6 items distintos ao solicitar só itens pequenos."
+                            " Quando solicitados juntamente a itens grandes, o limite é de 5 itens pequenos e 1 grande."
+                        )
+                    elif i == 1:
+                        justificativa += (
+                            "O limite para itens grandes é de 2 items distintos ao solicitar só itens grandes ou com mais 1 item especial. "
+                            "Quando solicitados juntamente a itens pequenos, o limite é de 5 itens pequenos e 1 grande."
+                        )
+                    elif i == 2:
+                        justificativa += (
+                            "O limite para itens especiais é de 1 item e não podem ser solicitados juntamente a itens pequenos, apenas grandes."
+                            " Nesse caso o limite é de 2 itens grandes e 1 especial."
+                        )
+                elif combinação_usuario[0] > 0 and combinação_usuario[2] > 0:
+                    justificativa += (
+                        "Itens pequenos não podem ser solicitados juntamente à itens especiais."
+                    )
+
+                break
+
+        if permitido:
+            permitido_adicionar = [
+                (valid_val - user_val)
+                for user_val, valid_val in zip(combinação_usuario, combinação_valida)
+            ]
+            combinacoes_validas.append(permitido_adicionar)
+
+    if combinacoes_validas:
+        return True, "", combinacoes_validas
+    else:
+        return False, justificativa, [0, 0, 0]
