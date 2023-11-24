@@ -5,6 +5,7 @@ from typing import Tuple
 
 import aiohttp
 from loguru import logger
+import pandas as pd
 from prefeitura_rio.integrations.sgrc.exceptions import SGRCBusinessRuleException
 from prefeitura_rio.integrations.sgrc.exceptions import SGRCDuplicateTicketException
 from prefeitura_rio.integrations.sgrc.exceptions import SGRCEquivalentTicketException
@@ -1918,8 +1919,6 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
         2: "camas de casal, fogões, sofá, etc.",
         3: "entulho, tanque de concreto, armário de 4 portas, etc.",
     }
-
-    import pandas as pd
 
     material_info = {
         "id": {
