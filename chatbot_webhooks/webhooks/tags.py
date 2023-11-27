@@ -2242,7 +2242,7 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
             )
             materiais_todos[nome]["valido"] = False
             parameters["rebi_combinacao_itens_valida"] = False
-    # Novos materiais    
+    # Novos materiais
     materiais_novos = {
         key: value
         for key, value in materiais_todos.items()
@@ -2316,9 +2316,11 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                 valor = int(float(value["informado"]))
             except ValueError:
                 valor = value["informado"]
-            msg_combinacao_invalida += f'{valor} {value["unidade"]} de {key.capitalize()} (material {value["grupo"]})'
+            msg_combinacao_invalida += (
+                f'{valor} {value["unidade"]} de {key.capitalize()} (material {value["grupo"]})'
+            )
         msg_combinacao_invalida += ", mas esse material *não pode ser incluído* junto com os materiais que já foram selecionados."
-        parameters["rebi_justificativa_combinacao_invalida"] = (msg_combinacao_invalida)
+        parameters["rebi_justificativa_combinacao_invalida"] = msg_combinacao_invalida
         return message, parameters
 
     logger.info("Combinação válida")
@@ -2349,9 +2351,13 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                 #     combinacoes_disponiveis += "- "
 
                 if valor > 1:
-                    combinacoes_disponiveis += f"{valor} itens de material {GRUPOS_CODIGO_NOME[grupo+1]}"
+                    combinacoes_disponiveis += (
+                        f"{valor} itens de material {GRUPOS_CODIGO_NOME[grupo+1]}"
+                    )
                 elif valor == 1:
-                    combinacoes_disponiveis += f"{valor} item de material {GRUPOS_CODIGO_NOME[grupo+1]}"
+                    combinacoes_disponiveis += (
+                        f"{valor} item de material {GRUPOS_CODIGO_NOME[grupo+1]}"
+                    )
                 # if grupo > 0 and any(comb[grupo + 1 :]) > 0:
                 #     combinacoes_disponiveis += " + "
             parameters["rebi_combinacoes_disponiveis_texto"] = combinacoes_disponiveis
@@ -2371,7 +2377,7 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
         except ValueError:
             valor = value["informado"]
         msg_regras += f'{valor} {value["unidade"]} de {key.capitalize()}'
-        #msg_regras += f'\nA unidade de medida de {key} considerada pela COMLURB é *{value["unidade"]}* e o *limite é de {value["permitido"]} {value["unidade"]}*.'
+        # msg_regras += f'\nA unidade de medida de {key} considerada pela COMLURB é *{value["unidade"]}* e o *limite é de {value["permitido"]} {value["unidade"]}*.'
 
     msg = ""
     for key, value in materiais_todos.items():
