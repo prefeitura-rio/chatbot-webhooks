@@ -1171,13 +1171,14 @@ async def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
         if "logradouro_bairro_ipp" in parameters and parameters["logradouro_bairro_ipp"] is not None
         else ""
     )
-    parameters["logradouro_mensagem_confirmacao"] += (
-        f'CEP:  {parameters["logradouro_cep"]}\n'
-        if "logradouro_cep" in parameters
-        and parameters["logradouro_cep"]
-        and parameters["logradouro_cep"] != "None"
-        else ""
-    )
+    ### RETIRANDO O CEP DAS INFORMAÇÕES A PEDIDO DO MALHEIRO
+    # parameters["logradouro_mensagem_confirmacao"] += (
+    #     f'CEP:  {parameters["logradouro_cep"]}\n'
+    #     if "logradouro_cep" in parameters
+    #     and parameters["logradouro_cep"]
+    #     and parameters["logradouro_cep"] != "None"
+    #     else ""
+    # )
     parameters["logradouro_mensagem_confirmacao"] += (
         f'Cidade:  {parameters["logradouro_cidade"]}, {parameters["logradouro_estado"]}\n'  # noqa
         if "logradouro_cidade" in parameters
