@@ -2405,6 +2405,7 @@ async def rebi_confirma_adicao_itens(request_data: dict) -> tuple[str, dict]:
 
     return message, parameters
 
+
 async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
@@ -2428,8 +2429,11 @@ async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
         "Caso não queira adicionar mais nenhum item, responda AVANÇAR."
     )
 
-    parameters["rebi_coleta_material_nomatch_1"] = "Desculpe, não entendi.\n\n" + parameters["rebi_coleta_material_1"]
-    parameters["rebi_coleta_material_nomatch_2"] = "Desculpe, não entendi.\n\n" + parameters["rebi_coleta_material_2"]
-    
+    parameters["rebi_coleta_material_nomatch_1"] = (
+        "Desculpe, não entendi.\n\n" + parameters["rebi_coleta_material_1"]
+    )
+    parameters["rebi_coleta_material_nomatch_2"] = (
+        "Desculpe, não entendi.\n\n" + parameters["rebi_coleta_material_2"]
+    )
 
     return message, parameters
