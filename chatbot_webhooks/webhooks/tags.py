@@ -1143,6 +1143,23 @@ async def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
 
     logger.info(f"logradouro_numero: {logradouro_numero}, tipo {type(logradouro_numero)}")
 
+    # Formatando o logradouro_id_bairro_ipp para o envio da mensagem ao cidadão
+    if parameters["logradouro_id_bairro_ipp"]:
+        try:
+            logradouro_id_bairro_ipp = str(parameters["logradouro_id_bairro_ipp"]).split(".")[0]
+        except:  # noqa
+            logradouro_id_bairro_ipp = (
+                parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters and parameters["logradouro_id_bairro_ipp"] != "None"
+                else ""
+            )
+            logger.info("logradouro_id_bairro_ipp: falhou ao tentar pegar a parcela antes do `.`")
+    else:
+        logradouro_id_bairro_ipp = ""
+
+    logger.info(f"logradouro_id_bairro_ipp: {logradouro_id_bairro_ipp}, tipo {type(logradouro_id_bairro_ipp)}")
+    parameters["logradouro_id_bairro_ipp"] = logradouro_id_bairro_ipp
+
     # Priorioza o ponto de referência identificado pelo Google
     # mas considera o ponto de referência informado pelo usuário caso o Google não tenha identificado algum
     if (
@@ -1843,9 +1860,11 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
     for protocol in user_protocols:
         tickets = protocol["tickets"]
         for ticket in tickets:
+            logger.info(ticket)
             # Se o serviço é Remoção de Entulho
-            if ticket["classification"] == "1607":
+            if str(ticket["classification"]) == "1607":
                 if ticket["status"] in STATUS_TIPO_ABERTO:
+                    logger.info("tem um aberto")
                     parameters["rebi_elegibilidade_abertura_chamado"] = False
                     parameters[
                         "rebi_elegibilidade_abertura_chamado_justificativa"
