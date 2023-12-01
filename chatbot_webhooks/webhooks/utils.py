@@ -49,18 +49,22 @@ async def get_ipp_street_code(parameters: dict) -> dict:
         logger.info(f"Geocode IPP URL: {geocode_logradouro_ipp_url}")
         return parameters
     else:
-        if (jaro_similarity(logradouro_google, logradouro_ipp) < THRESHOLD):
+        if jaro_similarity(logradouro_google, logradouro_ipp) < THRESHOLD:
             logger.info(
                 f"logradouro_nome retornado pelo Google significantemente diferente do retornado pelo IPP. Threshold: {jaro_similarity(logradouro_google, logradouro_ipp)}"
             )
             if parameters["logradouro_bairro_ipp"] == " ":
-                logger.info("Além dos endereços serem muito diferentes, não há bairro IPP. Então vou considerar o bairro do Google.")
+                logger.info(
+                    "Além dos endereços serem muito diferentes, não há bairro IPP. Então vou considerar o bairro do Google."
+                )
                 logradouro_completo = f'{logradouro_google}, {parameters.get("logradouro_bairro", parameters["logradouro_bairro_ipp"])}'
         elif parameters["logradouro_bairro_ipp"] == " ":
             logger.info(
                 f'Bairro IPP não identificado. Valor Bairro IPP: {parameters["logradouro_bairro_ipp"]}. Vou considerar o do Google.'
             )
-            logger.info("Atualizando o logradouro que vai ser geolocalizado para considerar o logradouro_ipp em vez do Google")
+            logger.info(
+                "Atualizando o logradouro que vai ser geolocalizado para considerar o logradouro_ipp em vez do Google"
+            )
             logradouro_completo = f'{logradouro_ipp}, {parameters.get("logradouro_bairro", parameters["logradouro_bairro_ipp"])}'
         # Call IPP api
         geocode_logradouro_ipp_url = str(
@@ -83,11 +87,22 @@ async def get_ipp_street_code(parameters: dict) -> dict:
 
             if parameters["logradouro_bairro_ipp"] == " ":
                 best_distance = 1000000000
-                logger.info(f'Não foi identificado um bairro, então o logradouro escolhido vai ser o mais próximo do lat/long retornado pelo Google, que é lat:{parameters["logradouro_latitude"]} long:{parameters["logradouro_longitude"]}')
+                logger.info(
+                    f'Não foi identificado um bairro, então o logradouro escolhido vai ser o mais próximo do lat/long retornado pelo Google, que é lat:{parameters["logradouro_latitude"]} long:{parameters["logradouro_longitude"]}'
+                )
                 for candidato in candidates:
-                    distance = haversine_distance(parameters["logradouro_latitude"], parameters["logradouro_longitude"], candidato["location"]["y"], candidato["location"]["x"])
-                    if distance < best_distance and "," in candidato["address"]: # Só considera logradouros com bairro
-                        logger.info(f'Logradouro mais próximo encontrado: {candidato["address"]} com distância de {distance}')
+                    distance = haversine_distance(
+                        parameters["logradouro_latitude"],
+                        parameters["logradouro_longitude"],
+                        candidato["location"]["y"],
+                        candidato["location"]["x"],
+                    )
+                    if (
+                        distance < best_distance and "," in candidato["address"]
+                    ):  # Só considera logradouros com bairro
+                        logger.info(
+                            f'Logradouro mais próximo encontrado: {candidato["address"]} com distância de {distance}'
+                        )
                         best_distance = distance
                         logradouro_codigo = candidato["attributes"]["cl"]
                         logradouro_real = candidato["address"]
@@ -96,10 +111,14 @@ async def get_ipp_street_code(parameters: dict) -> dict:
                 )
             else:
                 best_similarity = 0
-                logger.info("Já existe um bairro, então o logradouro vai ser selecionado de acordo similaridade de texto")
+                logger.info(
+                    "Já existe um bairro, então o logradouro vai ser selecionado de acordo similaridade de texto"
+                )
                 for candidato in candidates:
                     similarity = jaro_similarity(candidato["address"], logradouro_completo)
-                    if similarity > best_similarity and "," in candidato["address"]: # Só considera logradouros com bairro
+                    if (
+                        similarity > best_similarity and "," in candidato["address"]
+                    ):  # Só considera logradouros com bairro
                         best_similarity = similarity
                         logradouro_codigo = candidato["attributes"]["cl"]
                         logradouro_real = candidato["address"]
@@ -218,7 +237,7 @@ async def get_ipp_info(parameters: dict) -> bool:
         ##########
         ### O código abaixo estava causando mais problemas que ajudando, pois nem sempre o bairro identificado pelo Google
         ### é o mesmo bairro cadastrado no IPP, e o SGRC só aceita o IPP. Então é melhor tentar achar o bairro por lá mesmo...
-        ##########        
+        ##########
         # # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # # na base do IPP e pegando o codigo correspondente
         # if parameters["logradouro_id_bairro_ipp"] == "0":
@@ -975,33 +994,34 @@ async def rebi_combinacoes_permitidas(combinação_usuario: list) -> tuple[bool,
     else:
         return False, justificativa, [0, 0, 0]
 
+
 def haversine_distance(lat1, lon1, lat2, lon2):
     # Converte strings para floats, se necessário
     lat1 = float(lat1) if isinstance(lat1, str) else lat1
     lon1 = float(lon1) if isinstance(lon1, str) else lon1
     lat2 = float(lat2) if isinstance(lat2, str) else lat2
     lon2 = float(lon2) if isinstance(lon2, str) else lon2
-    
+
     # Raio médio da Terra em quilômetros
     R = 6371.0
-    
+
     # Converte as coordenadas de graus para radianos
     lat1_rad = math.radians(lat1)
     lon1_rad = math.radians(lon1)
     lat2_rad = math.radians(lat2)
     lon2_rad = math.radians(lon2)
-    
+
     # Diferenças entre as coordenadas
     dlat = lat2_rad - lat1_rad
     dlon = lon2_rad - lon1_rad
-    
+
     # Fórmula de Haversine
-    a = math.sin(dlat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2)**2
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    
+
     # Distância em quilômetros
     distance_km = R * c
-    
+
     # Distância em metros
     distance_m = distance_km * 1000
     return distance_m
