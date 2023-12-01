@@ -844,11 +844,11 @@ async def internal_request(
 async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     # Pegando o token de autenticação
     auth_response = await internal_request(
-        url="https://10.2.223.161/api/security/token",
+        url="https://epgmhom.rio.rj.gov.br:443/api/security/token",
         method="POST",
         request_kwargs={
             "verify": False,
-            "headers": {"Host": "epgmhom.rio.rj.gov.br"},
+            "headers": {},
             "data": {
                 "grant_type": "password",
                 "Consumidor": "chatbot",
@@ -863,11 +863,11 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
 
     # Fazer uma solicitação POST
     response = await internal_request(
-        url=f"https://10.2.223.161/api/{endpoint}",
+        url=f"https://epgmhom.rio.rj.gov.br:443/api/{endpoint}",
         method="POST",
         request_kwargs={
             "verify": False,
-            "headers": {"Host": "epgmhom.rio.rj.gov.br", "Authorization": token},
+            "headers": {"Authorization": token},
             "data": data,
         },
     )
@@ -904,16 +904,7 @@ async def get_user_protocols(person_id: str) -> dict:
         person_id (str): id to be searched.
 
     Returns:
-        dict: User info in the following format:
-            {
-                "id": 12345678,
-                "name": "Fulano de Tal",
-                "cpf": "12345678911",
-                "email": "fulano@detal.com",
-                "phones": [
-                    "21999999999",
-                ],
-            }
+        dict
     """
     url = get_integrations_url("protocols")
     key = config.CHATBOT_INTEGRATIONS_KEY
@@ -1027,3 +1018,42 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     # Distância em metros
     distance_m = distance_km * 1000
     return distance_m
+
+
+async def get_address_protocols(address: Address) -> dict:
+    """
+    Returns user protocols from person_id.
+
+    Args:
+        address (Address): id to be searched.
+
+    Returns:
+        dict: User info in the following format:
+            {
+                "id": 12345678,
+                "name": "Fulano de Tal",
+                "cpf": "12345678911",
+                "email": "fulano@detal.com",
+                "phones": [
+                    "21999999999",
+                ],
+            }
+    """
+    url = get_integrations_url("protocols")
+    key = config.CHATBOT_INTEGRATIONS_KEY
+    payload = {"address": address}
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                "POST", url, headers=headers, data=json.dumps(payload)
+            ) as response:
+                response.raise_for_status()
+                data = await response.json(content_type=None)
+        return data
+    except Exception as exc:  # noqa
+        logger.error(exc)
+        raise Exception(f"Failed to get address protocols: {exc}") from exc
