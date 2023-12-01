@@ -19,6 +19,7 @@ from prefeitura_rio.integrations.sgrc.models import Requester
 from unidecode import unidecode
 
 from chatbot_webhooks import config
+from chatbot_webhooks.webhooks.utils import get_address_protocols
 from chatbot_webhooks.webhooks.utils import get_ipp_info
 from chatbot_webhooks.webhooks.utils import get_user_info
 from chatbot_webhooks.webhooks.utils import get_user_protocols
@@ -1817,6 +1818,24 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
     parameters = request_data["sessionInfo"]["parameters"]
     cpf = parameters["usuario_cpf"]
 
+    ####
+    try:
+        address = Address(
+                street="Rua Afonso Cavalcanti",  # logradouro_nome
+                street_code="060020",  # logradouro_id_ipp
+                neighborhood="Cidade Nova",  # logradouro_bairro
+                neighborhood_code="8",  # logradouro_id_bairro_ipp
+                number="455",
+                locality="",
+                zip_code="",
+            )
+        ad_protocols = await get_address_protocols(address)
+        logger.info(ad_protocols)
+    ####
+    except:
+        logger.info("nao rolou nao")
+        pass
+
     try:
         logger.info(f"Buscando informações do usuário no SGRC com CPF {cpf}")
         user_info = await get_user_info(cpf)
@@ -1894,12 +1913,19 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
 async def rebi_tratador_lista_itens(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
+
     current_materiais_nome = copy(parameters.get("rebi_material_nome_informado", None))
+    logger.info(current_materiais_nome)
     current_materiais_quantidade = copy(parameters.get("rebi_material_quantidade_informada", None))
-    new_materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
-    new_materiais_quantidade = parameters["rebi_material_quantidade"]
+    logger.info(current_materiais_quantidade)
+    new_materiais_nomes = [parameters.get("rebi_material_nome", "").lower()]
+    logger.info(new_materiais_nomes)
+    new_materiais_quantidade = [parameters["rebi_material_quantidade"]]
+    logger.info(new_materiais_quantidade)
     parameters["rebi_material_nome_novo"] = copy(new_materiais_nomes)
+    logger.info(parameters["rebi_material_nome_novo"])
     parameters["rebi_material_quantidade_novo"] = copy(new_materiais_quantidade)
+    logger.info(parameters["rebi_material_quantidade_novo"])
 
     # Se estamos adicionando itens a listas já existentes
     if current_materiais_nome and current_materiais_quantidade:
@@ -1928,8 +1954,14 @@ async def rebi_tratador_lista_itens(request_data: dict) -> tuple[str, dict]:
 async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
-    materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
-    materiais_quantidade = parameters["rebi_material_quantidade"]
+    if type(parameters.get("rebi_material_nome", "")) == list:
+        materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
+    else:
+        materiais_nomes = [parameters.get("rebi_material_nome", "").lower()]
+    if type(parameters["rebi_material_quantidade"]) == list:
+        materiais_quantidade = parameters["rebi_material_quantidade"]
+    else:
+        materiais_quantidade = [parameters["rebi_material_quantidade"]]
 
     GRUPOS_CODIGO_NOME = {1: "pequeno", 2: "grande", 3: "especial"}
 
@@ -2456,4 +2488,33 @@ async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
         "Desculpe, não entendi.\n\n" + parameters["rebi_coleta_material_2"]
     )
 
+    return message, parameters
+
+
+async def rebi_checa_item_duplicado(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+    ultima_mensagem_usuario = request_data["text"]
+
+    duplicado = {
+        'cama': ['cama', 'camas'],
+        'colchao': ['colchão', 'colchao', 'colchoes', 'colchões', 'colxao', 'colxoes', 'colxões', 'colxão'],
+        'armario': ['armario', 'armário', 'armario', 'armários'],
+        'telha': ['telha', 'telhas'],
+        'tanque': ['tanque', 'tanques'],
+    }
+
+    if any(keyword in ultima_mensagem_usuario for keyword in duplicado['cama']):
+        message = "Você quis dizer Cama de solteiro ou Cama de casal?\n\nPor favor, informe qual é o tipo de material e a quantidade."
+    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado['colchao']):
+        message = "Você quis dizer Colchão de solteiro ou Colchão de casal?\n\nPor favor, informe qual é o tipo de material e a quantidade."
+    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado['armario']):
+        message = "Você quis dizer Armário de alumínio de cozinha, Armário de 4 portas/guarda-roupa ou Armário pequeno até 3 portas/cômoda?\n\nPor favor, informe qual é o tipo de material e a quantidade."
+    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado['telha']):
+        message = "Você quis dizer Telha de alumínio, Telha de amianto ou Telha francesa/tijolo?\n\nPor favor, informe qual é o tipo de material e a quantidade."
+    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado['tanque']):
+        message = "Você quis dizer Tanque de lavagem de plástico/louça ou Tanque de concreto?\n\nPor favor, informe qual é o tipo de material e a quantidade."
+    else:
+        pass
+            
     return message, parameters
