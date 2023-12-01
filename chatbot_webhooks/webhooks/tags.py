@@ -1860,11 +1860,9 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
     for protocol in user_protocols:
         tickets = protocol["tickets"]
         for ticket in tickets:
-            logger.info(ticket)
             # Se o serviço é Remoção de Entulho
             if str(ticket["classification"]) == "1607":
                 if ticket["status"] in STATUS_TIPO_ABERTO:
-                    logger.info("tem um aberto")
                     parameters["rebi_elegibilidade_abertura_chamado"] = False
                     parameters[
                         "rebi_elegibilidade_abertura_chamado_justificativa"

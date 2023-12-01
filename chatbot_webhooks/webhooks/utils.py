@@ -763,8 +763,9 @@ def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
 
 def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
     """
-    Valida se a string informada tem nome e sobrenome,
-    ou seja, possui um espaço (' ') no meio da string.
+    Valida se a string informada tem nome e um sobrenome válido,
+    ou seja, possui um espaço (' ') no meio da string
+    e tem um sobrenome com no mínimo 2 caracteres.
     Retorna, True: se estiver ok! E False: se não.
 
     Ex: validade_name("gabriel gazola")
@@ -772,7 +773,7 @@ def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
     nome = parameters["usuario_nome_cadastrado"]
     try:
         nome_quebrado = nome.split(" ")
-        if len(nome_quebrado) > 2 or (len(nome_quebrado) == 2 and nome_quebrado[-1] != ""):
+        if len(nome_quebrado) >= 2 and len(any(nome_quebrado)[1:]) >= 2:
             return True
         else:
             return False
