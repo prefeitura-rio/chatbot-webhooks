@@ -844,11 +844,11 @@ async def internal_request(
 async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     # Pegando o token de autenticação
     auth_response = await internal_request(
-        url="https://10.2.223.161/api/security/token",
+        url="https://epgmhom.rio.rj.gov.br:443/api/security/token",
         method="POST",
         request_kwargs={
             "verify": False,
-            "headers": {"Host": "epgmhom.rio.rj.gov.br"},
+            "headers": {},
             "data": {
                 "grant_type": "password",
                 "Consumidor": "chatbot",
@@ -863,11 +863,11 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
 
     # Fazer uma solicitação POST
     response = await internal_request(
-        url=f"https://10.2.223.161/api/{endpoint}",
+        url=f"https://epgmhom.rio.rj.gov.br:443/api/{endpoint}",
         method="POST",
         request_kwargs={
             "verify": False,
-            "headers": {"Host": "epgmhom.rio.rj.gov.br", "Authorization": token},
+            "headers": {"Authorization": token},
             "data": data,
         },
     )
