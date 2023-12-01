@@ -2162,7 +2162,7 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
             45: "sacos plásticos de até 20 litros",
             46: "unidades",
             47: "pedaços até 10 kg",
-            48: "150 unidades",
+            48: "unidades",
             49: "unidades de até 10 kg",
             50: "unidades",
             51: "unidades",
