@@ -790,9 +790,11 @@ def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
     Ex: validade_name("gabriel gazola")
     """
     nome = parameters["usuario_nome_cadastrado"]
+    logger.info(nome)
     try:
         nome_quebrado = nome.split(" ")
-        if len(nome_quebrado) >= 2 and len(any(nome_quebrado)[1:]) >= 2:
+        logger.info(nome_quebrado)
+        if len(nome_quebrado) >= 2 and any(len(element) >= 2 for element in nome_quebrado[1:]):
             return True
         else:
             return False
