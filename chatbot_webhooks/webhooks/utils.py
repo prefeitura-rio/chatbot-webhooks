@@ -1019,6 +1019,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     distance_m = distance_km * 1000
     return distance_m
 
+
 async def get_address_protocols(address: Address) -> dict:
     """
     Returns user protocols from person_id.

@@ -1821,14 +1821,14 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
     ####
     try:
         address = Address(
-                street="Rua Afonso Cavalcanti",  # logradouro_nome
-                street_code="060020",  # logradouro_id_ipp
-                neighborhood="Cidade Nova",  # logradouro_bairro
-                neighborhood_code="8",  # logradouro_id_bairro_ipp
-                number="455",
-                locality="",
-                zip_code="",
-            )
+            street="Rua Afonso Cavalcanti",  # logradouro_nome
+            street_code="060020",  # logradouro_id_ipp
+            neighborhood="Cidade Nova",  # logradouro_bairro
+            neighborhood_code="8",  # logradouro_id_bairro_ipp
+            number="455",
+            locality="",
+            zip_code="",
+        )
         ad_protocols = await get_address_protocols(address)
         logger.info(ad_protocols)
     ####
@@ -2497,24 +2497,33 @@ async def rebi_checa_item_duplicado(request_data: dict) -> tuple[str, dict]:
     ultima_mensagem_usuario = request_data["text"]
 
     duplicado = {
-        'cama': ['cama', 'camas'],
-        'colchao': ['colchão', 'colchao', 'colchoes', 'colchões', 'colxao', 'colxoes', 'colxões', 'colxão'],
-        'armario': ['armario', 'armário', 'armario', 'armários'],
-        'telha': ['telha', 'telhas'],
-        'tanque': ['tanque', 'tanques'],
+        "cama": ["cama", "camas"],
+        "colchao": [
+            "colchão",
+            "colchao",
+            "colchoes",
+            "colchões",
+            "colxao",
+            "colxoes",
+            "colxões",
+            "colxão",
+        ],
+        "armario": ["armario", "armário", "armario", "armários"],
+        "telha": ["telha", "telhas"],
+        "tanque": ["tanque", "tanques"],
     }
 
-    if any(keyword in ultima_mensagem_usuario for keyword in duplicado['cama']):
+    if any(keyword in ultima_mensagem_usuario for keyword in duplicado["cama"]):
         message = "Você quis dizer Cama de solteiro ou Cama de casal?\n\nPor favor, informe qual é o tipo de material e a quantidade."
-    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado['colchao']):
+    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado["colchao"]):
         message = "Você quis dizer Colchão de solteiro ou Colchão de casal?\n\nPor favor, informe qual é o tipo de material e a quantidade."
-    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado['armario']):
+    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado["armario"]):
         message = "Você quis dizer Armário de alumínio de cozinha, Armário de 4 portas/guarda-roupa ou Armário pequeno até 3 portas/cômoda?\n\nPor favor, informe qual é o tipo de material e a quantidade."
-    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado['telha']):
+    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado["telha"]):
         message = "Você quis dizer Telha de alumínio, Telha de amianto ou Telha francesa/tijolo?\n\nPor favor, informe qual é o tipo de material e a quantidade."
-    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado['tanque']):
+    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado["tanque"]):
         message = "Você quis dizer Tanque de lavagem de plástico/louça ou Tanque de concreto?\n\nPor favor, informe qual é o tipo de material e a quantidade."
     else:
         pass
-            
+
     return message, parameters
