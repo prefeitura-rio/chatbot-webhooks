@@ -745,25 +745,25 @@ def validate_CNPJ(cnpj: str) -> bool:
     return True
 
 
-def validate_cpf_cnpj(documento: str) -> bool:
+def validate_cpf_cnpj(parameters: dict, form_parameters_list: list = []) -> bool:
     """Efetua a validação de CPF ou CNPJ."""
 
     # Obtém apenas os números do documento, ignorando pontuações
+    documento = parameters["usuario_cpf"]
     numbers = [int(digit) for digit in documento if digit.isdigit()]
-
     # Verifica se o documento possui 11 ou 14 números
     if len(numbers) not in [11, 14] or len(set(numbers)) == 1:
         return False
 
     if len(numbers) == 11:  # CPF
-        if not validate_CPF2(numbers):
-            return False
+        logger.info("É um CPF")
+        return validate_CPF(parameters)
 
     elif len(numbers) == 14:  # CNPJ
-        if not validate_CNPJ("".join(map(str, numbers))):
-            return False
+        logger.info("É um CNPJ")
+        return validate_CNPJ("".join(map(str, numbers)))
 
-    return True
+    return False
 
 
 def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
@@ -876,16 +876,23 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     logger.info("Resposta da solicitação POST:")
     logger.info(response)
 
-    if response["success"]:
+    if response is None:
+        logger.info(
+            "A API não retornou nada. Valor esperado para o endpoint de cadastro de usuários."
+        )
+        return {"success": True}
+    elif response["success"]:
         logger.info("A API retornou registros.")
         return response["data"]
     else:
         logger.info(
             f'Algo deu errado durante a solicitação, segue justificativa: {response["data"][0]["value"]}'
         )
-        motivos = []
+        motivos = ""
         for item in response["data"]:
-            motivos.append(item["value"])
+            if motivos:
+                motivos += "\n\n"
+            motivos += item["value"]
         return {"erro": True, "motivos": motivos}
 
     # guias_protestadas = response_json["data"]

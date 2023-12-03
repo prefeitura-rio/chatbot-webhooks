@@ -1450,48 +1450,43 @@ async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
 
     registros = await pgm_api(endpoint="v2/cdas/protestadas", data=parametros_entrada)
 
+    # Tratamento padrão para erros
     if "erro" in registros:
         parameters["api_resposta_sucesso"] = False
-        if "BadRequest - Não foram encontradas informações de protesto." in registros["motivos"]:
-            parameters["api_resposta_erro"] = False
-            parameters["api_descricao_erro"] = "Não foram encontradas informações de protesto."
-        else:
-            parameters["api_resposta_erro"] = True
+        parameters["api_descricao_erro"] = registros["motivos"]
+        return message, parameters
 
-            # partes = mensagem_erro.split('BadRequest - ', 1)
-            # # Verificar se há pelo menos duas partes após a divisão
-            # if len(partes) >= 2:
-            #     descricao_erro = partes[1]  # O segundo elemento após a divisão contém a descrição do erro
-            #     descricao_erro = descricao_erro.strip()
+    # API retornou registros
+    parameters["api_resposta_sucesso"] = True
 
-            parameters[
-                "api_descricao_erro"
-            ] = "Ocorreu um erro na sua solicitação, por favor tente mais tarde."
-    else:
-        parameters["api_resposta_sucesso"] = True
+    mensagem_cda_protestadas = ""
 
-        mensagem_cda_protestadas = ""
+    # Monta mensagem
+    for i, cda in enumerate(registros):
 
-        # Monta mensagem
-        for i, cda in enumerate(registros):
+        if cda.get("numExercicio", "") != "" and cda.get("numExercicio", "") != None:
             ex_guia = (
                 f'{cda["numExercicio"]}/{cda["guia"]}'
                 if cda.get("guia", "") != ""
                 else cda["numExercicio"]
             )
-            mensagem_cda_protestadas += f'*{i+1}.*\t*{cda["cdaId"]}* (natureza {cda["naturezaDivida"]} - exerc./guia {ex_guia})'
-            mensagem_cda_protestadas += (
-                f'\n{cda["descricaoMovimentoProtesto"]} Em {cda["dataultimoMovimentoProtesto"]}'
-            )
-            if cda.get("numeroCartorio", "") != "" and cda.get("numeroCartorio", None):
-                mensagem_cda_protestadas += (
-                    f'\nCartório {cda["numeroCartorio"]} - Protocolo nº {cda["numeroProtocolo"]}'
-                )
-            else:
-                pass
-            mensagem_cda_protestadas += "\n\n" if (i + 1) < len(registros) else ""
+            exercicio_guia = f" - exerc./guia {ex_guia}"
+        else:
+            exercicio_guia = ""
 
-        parameters["mensagem_cda_protestadas"] = mensagem_cda_protestadas
+        mensagem_cda_protestadas += (
+            f'*{i+1}. *\t*{cda["cdaId"]}* (natureza {cda["naturezaDivida"]}{exercicio_guia})'
+        )
+        mensagem_cda_protestadas += f'\nFase de Cobrança: {cda["faseCobranca"]}, Situação: {cda["situacao"]}, Saldo Total da Dívida: {cda["saldoTotal"]}'
+        if cda.get("numeroCartorio", "") != "" and cda.get("numeroCartorio", None):
+            mensagem_cda_protestadas += (
+                f'\nCartório {cda["numeroCartorio"]} - Protocolo nº {cda["numeroProtocolo"]}'
+            )
+        else:
+            pass
+        mensagem_cda_protestadas += "\n\n" if (i + 1) < len(registros) else ""
+
+    parameters["mensagem_cda_protestadas"] = mensagem_cda_protestadas
 
     return message, parameters
 
@@ -1503,24 +1498,29 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
     logger.info(parameters)
 
     mapeia_opcoes_consulta = {
-        1: "inscricaoImobiliaria",
-        2: "cda",
-        3: "cpfCnpj",
-        4: "numeroExecucaoFiscal",
+        "Inscrição Imobiliária": "inscricaoImobiliaria",
+        "Certidão da Dívida Ativa": "cda",
+        "CPF/CNPJ": "cpfCnpj",
+        "Execução Fiscal": "numeroExecucaoFiscal",
     }
 
     mapeia_variaveis = {
-        1: "inscricaoimobiliaria",
-        2: "numero_certidao_divida_ativa",
-        3: "cpf_cnpj_contribuinte",
-        4: "numero_execucao_fiscal",
+        "Inscrição Imobiliária": "codigo_inscricao_imobiliaria",
+        "Certidão da Dívida Ativa": "numero_certidao_divida_ativa",
+        "CPF/CNPJ": "cpf_cnpj_contribuinte",
+        "Execução Fiscal": "numero_execucao_fiscal",
     }
 
-    if parameters["itemmenu"] in [1, 2, 3, 4]:
+    if parameters["da1_tipo_de_consulta"] in [
+        "Inscrição Imobiliária",
+        "Certidão da Dívida Ativa",
+        "CPF/CNPJ",
+        "Execução Fiscal",
+    ]:
         parametros_entrada = {
             "origem_solicitação": 0,
-            mapeia_opcoes_consulta[parameters["itemmenu"]]: parameters[
-                mapeia_variaveis[parameters["itemmenu"]]
+            mapeia_opcoes_consulta[parameters["da1_tipo_de_consulta"]]: parameters[
+                mapeia_variaveis[parameters["da1_tipo_de_consulta"]]
             ],
         }
     else:
@@ -1532,114 +1532,96 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
 
     registros = await pgm_api(endpoint="v2/cdas/dividas-contribuinte", data=parametros_entrada)
 
+    # Tratamento padrão para erros
     if "erro" in registros:
         parameters["api_resposta_sucesso"] = False
-        logger.info(registros["motivos"])
-        if (
-            "BadRequest - Sua consulta não retornou débitos. Caso tenha realizado pelo nº da Execução Fiscal, talvez o sistema não possua todos os números em novo formato (CNJ)."
-            in registros["motivos"]
-        ):
-            parameters["api_resposta_erro"] = False
-            parameters[
-                "api_descricao_erro"
-            ] = "Sua consulta não retornou débitos. Caso tenha realizado pelo nº da Execução Fiscal, talvez o sistema não possua todos os números em novo formato (CNJ)."
-        else:
-            parameters["api_resposta_erro"] = True
+        parameters["api_descricao_erro"] = registros["motivos"]
+        return message, parameters
 
-            # partes = mensagem_erro.split('BadRequest - ', 1)
-            # # Verificar se há pelo menos duas partes após a divisão
-            # if len(partes) >= 2:
-            #     descricao_erro = partes[1]  # O segundo elemento após a divisão contém a descrição do erro
-            #     descricao_erro = descricao_erro.strip()
+    # API retornou registros
+    parameters["api_resposta_sucesso"] = True
 
-            parameters[
-                "api_descricao_erro"
-            ] = "Ocorreu um erro na sua solicitação, por favor tente mais tarde."
+    mapeia_descricoes = {
+        "Inscrição Imobiliária": "Inscrição Imobiliária",
+        "Certidão da Dívida Ativa": "Certidão de Dívida Ativa",
+        "CPF/CNPJ": "CPF/CNPJ",
+        "Execução Fiscal": "Número de Execução Fiscal",
+        "Auto de Infração": "Nº e Ano do Auto de Infração",
+    }
+
+    indice = 0
+    itens_pagamento = dict()
+    msg = ""
+    # Cabeçalho da Mensagem
+    if parameters["da1_tipo_de_consulta"] in [
+        "Inscrição Imobiliária",
+        "Certidão da Dívida Ativa",
+        "Execução Fiscal",
+        "Auto de Infração",
+    ]:
+        msg += f'{mapeia_descricoes[parameters["da1_tipo_de_consulta"]]}: {parameters[mapeia_variaveis[parameters["da1_tipo_de_consulta"]]]}'
     else:
-        parameters["api_resposta_sucesso"] = True
-        logger.info("Oi lindos e lindas do Brasil!!!")
-
-        mapeia_descricoes = {
-            1: "Inscrição Imobiliária",
-            2: "Certidão de Dívida Ativa",
-            3: "CPF/CNPJ",
-            4: "Número de Execução Fiscal",
-            5: "Nº e Ano do Auto de Infração",
-        }
-
-        indice = 0
-        itens_pagamento = dict()
-        msg = ""
-        # Cabeçalho da Mensagem
-        if parameters["itemmenu"] in [1, 2, 3, 4]:
-            msg += f'{mapeia_descricoes[parameters["itemmenu"]]}: {parameters[mapeia_variaveis[parameters["itemmenu"]]]}'
-        else:
-            msg += f'{mapeia_descricoes[parameters["itemmenu"]]}: {parameters["numero_auto_infracao"]} {parameters["ano_auto_infracao"]}'
-        # Endereço do Imóvel
-        if parameters["itemmenu"] == 1:
-            msg += f'\nEndereço do Imóvel: {registros["enderecoImovel"]}'
-        msg += f'\nData de Vencimento: {registros["dataVencimento"]}'
-        if (
-            len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0
-            or len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0
-        ):
-            msg += f'\n\nDébitos não parcelados - Saldo Total da Dívida {registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"]}'
-            if (
-                len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"])
-                > 0
+        msg += f'{mapeia_descricoes[parameters["da1_tipo_de_consulta"]]}: {parameters["numero_auto_infracao"]} {parameters["ano_auto_infracao"]}'
+    # Endereço do Imóvel
+    if parameters["da1_tipo_de_consulta"] == "Inscrição Imobiliária":
+        msg += f'\nEndereço do Imóvel: {registros["enderecoImovel"]}'
+    msg += f'\nData de Vencimento: {registros["dataVencimento"]}'
+    if (
+        len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0
+        or len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0
+    ):
+        msg += f'\n\nDébitos não parcelados - Saldo Total da Dívida {registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"]}'
+        if len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0:
+            # CDAS AQUI
+            msg += "\n\nCDAs não parceladas"
+            cdas = []
+            for i, cda in enumerate(
+                registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]
             ):
-                # CDAS AQUI
-                msg += "\n\nCDAs não parceladas"
-                cdas = []
-                for i, cda in enumerate(
-                    registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]
-                ):
-                    indice += 1
-                    itens_pagamento[indice] = cda["cdaId"]
-                    msg += (
-                        f'\n*{indice}.*\t*Certidão {cda["cdaId"]}* - Saldo {cda["valorSaldoTotal"]}'
-                    )
-                    cdas.append(cda["cdaId"])
-                parameters["lista_cdas"] = cdas
-            if len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0:
-                # EFS AQUI
-                msg += "\n\nEFs não parceladas"
-                efs = []
-                for i, ef in enumerate(
-                    registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]
-                ):
-                    indice += 1
-                    itens_pagamento[indice] = ef["numeroExecucaoFiscal"]
-                    msg += f'\n*{indice}.*\t*Execução Fiscal {ef["numeroExecucaoFiscal"]}* - Saldo {ef["saldoExecucaoFiscalNaoParcelada"]}'
-                    efs.append(ef["numeroExecucaoFiscal"])
-                parameters["lista_efs"] = efs
-        if len(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]) > 0:
-            # GUIAS AQUI
-            msg += "\n\nGuias de parcelamento vigentes"
-            guias = []
-            for i, guia in enumerate(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]):
                 indice += 1
-                itens_pagamento[indice] = guia["numero"]
-                msg += f'\n*{indice}.*\t*Guia nº {guia["numero"]}* - Data do Último Pagamento: {guia["dataUltimoPagamento"]}'
-                guias.append(guia["numero"])
-            parameters["lista_guias"] = guias
+                itens_pagamento[indice] = cda["cdaId"]
+                msg += f'\n*{indice}.*\t*Certidão {cda["cdaId"]}* - Saldo {cda["valorSaldoTotal"]}'
+                cdas.append(cda["cdaId"])
+            parameters["lista_cdas"] = cdas
+        if len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0:
+            # EFS AQUI
+            msg += "\n\nEFs não parceladas"
+            efs = []
+            for i, ef in enumerate(
+                registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]
+            ):
+                indice += 1
+                itens_pagamento[indice] = ef["numeroExecucaoFiscal"]
+                msg += f'\n*{indice}.*\t*Execução Fiscal {ef["numeroExecucaoFiscal"]}* - Saldo {ef["saldoExecucaoFiscalNaoParcelada"]}'
+                efs.append(ef["numeroExecucaoFiscal"])
+            parameters["lista_efs"] = efs
+    if len(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]) > 0:
+        # GUIAS AQUI
+        msg += "\n\nGuias de parcelamento vigentes"
+        guias = []
+        for i, guia in enumerate(registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]):
+            indice += 1
+            itens_pagamento[indice] = guia["numero"]
+            msg += f'\n*{indice}.*\t*Guia nº {guia["numero"]}* - Data do Último Pagamento: {guia["dataUltimoPagamento"]}'
+            guias.append(guia["numero"])
+        parameters["lista_guias"] = guias
 
-        parameters["dicionario_itens"] = itens_pagamento
-        parameters["total_itens_pagamento"] = indice
-        parameters["mensagem_divida_contribuinte"] = msg
-        parameters["guias_quantidade_total"] = len(parameters.get("lista_guias", []))
-        parameters["efs_cdas_quantidade_total"] = len(parameters.get("lista_efs", [])) + len(
-            parameters.get("lista_cdas", [])
-        )
+    parameters["dicionario_itens"] = itens_pagamento
+    parameters["total_itens_pagamento"] = indice
+    parameters["mensagem_divida_contribuinte"] = msg
+    parameters["guias_quantidade_total"] = len(parameters.get("lista_guias", []))
+    parameters["efs_cdas_quantidade_total"] = len(parameters.get("lista_efs", [])) + len(
+        parameters.get("lista_cdas", [])
+    )
 
-        # Definindo parâmetros salto_total parcelado e não parcelado
-        parameters["total_nao_parcelado"] = len(
-            registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]
-        ) + len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"])
+    # Definindo parâmetros salto_total parcelado e não parcelado
+    parameters["total_nao_parcelado"] = len(
+        registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]
+    ) + len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"])
 
-        parameters["total_parcelado"] = len(
-            registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]
-        )
+    parameters["total_parcelado"] = len(
+        registros["guiasParceladasComSaldoTotal"]["guiasParceladas"]
+    )
 
     return message, parameters
 
@@ -1683,38 +1665,33 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
 
     logger.info(registros)
 
+    # Tratamento padrão para erros
     if "erro" in registros:
         parameters["api_resposta_sucesso"] = False
-        logger.info(registros["motivos"])
-        parameters["api_resposta_erro"] = True
+        parameters["api_descricao_erro"] = registros["motivos"]
+        return message, parameters
 
-        # partes = mensagem_erro.split('BadRequest - ', 1)
-        # # Verificar se há pelo menos duas partes após a divisão
-        # if len(partes) >= 2:
-        #     descricao_erro = partes[1]  # O segundo elemento após a divisão contém a descrição do erro
-        #     descricao_erro = descricao_erro.strip()
+    # API retornou registros
+    parameters["api_resposta_sucesso"] = True
+    message_parts = []
+    dicionario_guias_pagamento_a_vista = dict()
 
-        parameters["api_descricao_erro"] = registros["motivos"][0]
-    else:
-        message_parts = []
-        dicionario_guias_pagamento_a_vista = dict()
+    for i, item in enumerate(registros):
+        dicionario_guias_pagamento_a_vista[i] = item
+        barcode = item["codigoDeBarras"]
+        pdf_file = item["pdf"]
+        base64_data = item["arquivoBase64"]
 
-        for i, item in enumerate(registros):
-            dicionario_guias_pagamento_a_vista[i] = item
-            barcode = item["codigoDeBarras"]
-            pdf_file = item["pdf"]
-            base64_data = item["arquivoBase64"]
+        item_message = (
+            f"Código de barras: {barcode}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            f"FILE:{pdf_file}:{base64_data}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
+        )
 
-            item_message = (
-                f"Código de barras: {barcode}"
-                "SIGNATURE_TYPE_DIVISION_MESSAGE"
-                f"FILE:{pdf_file}:{base64_data}"
-                "SIGNATURE_TYPE_DIVISION_MESSAGE"
-            )
+        message_parts.append(item_message)
 
-            message_parts.append(item_message)
-
-        message = "".join(message_parts)
+    message = "".join(message_parts)
 
     return message, parameters
 
@@ -1759,56 +1736,70 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
 
     logger.info(registros)
 
-    # # # ### Cria registros falsos já que o endpoint atualmente está quebrado
-
-    # # # import random
-    # # # import base64
-    # # # import os
-
-    # # # # Sample data for realistic-looking values
-    # # # pdf_names = ["guia_2023_1.pdf", "guia_2023_2.pdf", "guia_2023_3.pdf", "guia_2023_4.pdf", "guia_2023_5.pdf"]
-
-    # # # registros = []
-
-    # # # for _ in range(5):
-    # # #     pdf_name = random.choice(pdf_names)
-    # # #     barcode = ''.join(random.choice("0123456789") for _ in range(9))
-    # # #     base64_data = base64.b64encode(os.urandom(32)).decode('utf-8')
-
-    # # #     registros.append({
-    # # #         "pdf": pdf_name,
-    # # #         "arquivoBase64": base64_data,
-    # # #         "codigoDeBarras": barcode
-    # # #     })
-
-    # # # ### Fim do código que cria registros falsos
-
+    # Tratamento padrão para erros
     if "erro" in registros:
         parameters["api_resposta_sucesso"] = False
-        logger.info(registros["motivos"])
-        parameters["api_resposta_erro"] = True
+        parameters["api_descricao_erro"] = registros["motivos"]
+        return message, parameters
 
-        parameters["api_descricao_erro"] = registros["motivos"][0]
-    else:
-        message_parts = []
-        dicionario_guias_pagamento_a_vista = dict()
+    # API retornou registros
+    parameters["api_resposta_sucesso"] = True
+    message_parts = []
+    dicionario_guias_pagamento_a_vista = dict()
 
-        for i, item in enumerate(registros):
-            dicionario_guias_pagamento_a_vista[i] = item
-            barcode = item["codigoDeBarras"]
-            pdf_file = item["pdf"]
-            base64_data = item["arquivoBase64"]
+    for i, item in enumerate(registros):
+        dicionario_guias_pagamento_a_vista[i] = item
+        barcode = item["codigoDeBarras"]
+        pdf_file = item["pdf"]
+        base64_data = item["arquivoBase64"]
 
-            item_message = (
-                f"Código de barras: {barcode}"
-                "SIGNATURE_TYPE_DIVISION_MESSAGE"
-                f"FILE:{pdf_file}:{base64_data}"
-                "SIGNATURE_TYPE_DIVISION_MESSAGE"
-            )
+        item_message = (
+            f"Código de barras: {barcode}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            f"FILE:{pdf_file}:{base64_data}"
+            "SIGNATURE_TYPE_DIVISION_MESSAGE"
+        )
 
-            message_parts.append(item_message)
+        message_parts.append(item_message)
 
-        message = "".join(message_parts)
+    message = "".join(message_parts)
+
+    return message, parameters
+
+
+async def da_cadastro(request_data: dict) -> tuple[str, dict]:
+    parameters = request_data["sessionInfo"]["parameters"]
+    message = ""
+
+    logger.info(parameters)
+
+    try:
+        parametros_entrada = {
+            "cpfCnpj": parameters["usuario_cpf"],
+            "celular": parameters["usuario_telefone"],
+            "correioEletronico": parameters["usuario_email"],
+        }
+    except:  # noqa
+        # Informações chegaram inválidas
+        parameters["api_resposta_sucesso"] = False
+        parameters[
+            "api_descricao_erro"
+        ] = "Houve um erro na coleta de dados e não será possível realizar o seu cadastro no momento. Por favor, tente mais tarde."
+        return message, parameters
+
+    registros = await pgm_api(endpoint="v2/notificacao/atualizar", data=parametros_entrada)
+
+    logger.info(registros)
+
+    # Tratamento padrão para erros
+    if "erro" in registros:
+        parameters["api_resposta_sucesso"] = False
+        parameters["api_descricao_erro"] = registros["motivos"]
+        return message, parameters
+
+    # API retornou registros
+    parameters["api_resposta_sucesso"] = True
+    logger.info("Cadastro realizado com sucesso")
 
     return message, parameters
 
