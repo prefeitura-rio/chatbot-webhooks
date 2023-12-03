@@ -877,7 +877,9 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     logger.info(response)
 
     if response is None:
-        logger.info("A API não retornou nada. Valor esperado para o endpoint de cadastro de usuários.")
+        logger.info(
+            "A API não retornou nada. Valor esperado para o endpoint de cadastro de usuários."
+        )
         return {"success": True}
     elif response["success"]:
         logger.info("A API retornou registros.")

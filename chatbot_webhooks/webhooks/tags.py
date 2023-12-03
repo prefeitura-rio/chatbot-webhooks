@@ -1463,21 +1463,21 @@ async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
 
     # Monta mensagem
     for i, cda in enumerate(registros):
-        
+
         if cda.get("numExercicio", "") != "" and cda.get("numExercicio", "") != None:
             ex_guia = (
                 f'{cda["numExercicio"]}/{cda["guia"]}'
                 if cda.get("guia", "") != ""
                 else cda["numExercicio"]
             )
-            exercicio_guia = f' - exerc./guia {ex_guia}'
+            exercicio_guia = f" - exerc./guia {ex_guia}"
         else:
             exercicio_guia = ""
 
-        mensagem_cda_protestadas += f'*{i+1}. *\t*{cda["cdaId"]}* (natureza {cda["naturezaDivida"]}{exercicio_guia})'
         mensagem_cda_protestadas += (
-            f'\nFase de Cobrança: {cda["faseCobranca"]}, Situação: {cda["situacao"]}, Saldo Total da Dívida: {cda["saldoTotal"]}'
+            f'*{i+1}. *\t*{cda["cdaId"]}* (natureza {cda["naturezaDivida"]}{exercicio_guia})'
         )
+        mensagem_cda_protestadas += f'\nFase de Cobrança: {cda["faseCobranca"]}, Situação: {cda["situacao"]}, Saldo Total da Dívida: {cda["saldoTotal"]}'
         if cda.get("numeroCartorio", "") != "" and cda.get("numeroCartorio", None):
             mensagem_cda_protestadas += (
                 f'\nCartório {cda["numeroCartorio"]} - Protocolo nº {cda["numeroProtocolo"]}'
@@ -1511,7 +1511,12 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
         "Execução Fiscal": "numero_execucao_fiscal",
     }
 
-    if parameters["da1_tipo_de_consulta"] in ["Inscrição Imobiliária", "Certidão da Dívida Ativa", "CPF/CNPJ", "Execução Fiscal"]:
+    if parameters["da1_tipo_de_consulta"] in [
+        "Inscrição Imobiliária",
+        "Certidão da Dívida Ativa",
+        "CPF/CNPJ",
+        "Execução Fiscal",
+    ]:
         parametros_entrada = {
             "origem_solicitação": 0,
             mapeia_opcoes_consulta[parameters["da1_tipo_de_consulta"]]: parameters[
@@ -1548,7 +1553,12 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
     itens_pagamento = dict()
     msg = ""
     # Cabeçalho da Mensagem
-    if parameters["da1_tipo_de_consulta"] in ["Inscrição Imobiliária", "Certidão da Dívida Ativa", "Execução Fiscal", "Auto de Infração"]:
+    if parameters["da1_tipo_de_consulta"] in [
+        "Inscrição Imobiliária",
+        "Certidão da Dívida Ativa",
+        "Execução Fiscal",
+        "Auto de Infração",
+    ]:
         msg += f'{mapeia_descricoes[parameters["da1_tipo_de_consulta"]]}: {parameters[mapeia_variaveis[parameters["da1_tipo_de_consulta"]]]}'
     else:
         msg += f'{mapeia_descricoes[parameters["da1_tipo_de_consulta"]]}: {parameters["numero_auto_infracao"]} {parameters["ano_auto_infracao"]}'
@@ -1561,10 +1571,7 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
         or len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0
     ):
         msg += f'\n\nDébitos não parcelados - Saldo Total da Dívida {registros["debitosNaoParceladosComSaldoTotal"]["saldoTotalNaoParcelado"]}'
-        if (
-            len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"])
-            > 0
-        ):
+        if len(registros["debitosNaoParceladosComSaldoTotal"]["cdasNaoAjuizadasNaoParceladas"]) > 0:
             # CDAS AQUI
             msg += "\n\nCDAs não parceladas"
             cdas = []
@@ -1573,9 +1580,7 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
             ):
                 indice += 1
                 itens_pagamento[indice] = cda["cdaId"]
-                msg += (
-                    f'\n*{indice}.*\t*Certidão {cda["cdaId"]}* - Saldo {cda["valorSaldoTotal"]}'
-                )
+                msg += f'\n*{indice}.*\t*Certidão {cda["cdaId"]}* - Saldo {cda["valorSaldoTotal"]}'
                 cdas.append(cda["cdaId"])
             parameters["lista_cdas"] = cdas
         if len(registros["debitosNaoParceladosComSaldoTotal"]["efsNaoParceladas"]) > 0:
@@ -1777,12 +1782,12 @@ async def da_cadastro(request_data: dict) -> tuple[str, dict]:
     except:  # noqa
         # Informações chegaram inválidas
         parameters["api_resposta_sucesso"] = False
-        parameters["api_descricao_erro"] = "Houve um erro na coleta de dados e não será possível realizar o seu cadastro no momento. Por favor, tente mais tarde."
+        parameters[
+            "api_descricao_erro"
+        ] = "Houve um erro na coleta de dados e não será possível realizar o seu cadastro no momento. Por favor, tente mais tarde."
         return message, parameters
 
-    registros = await pgm_api(
-        endpoint="v2/notificacao/atualizar", data=parametros_entrada
-    )
+    registros = await pgm_api(endpoint="v2/notificacao/atualizar", data=parametros_entrada)
 
     logger.info(registros)
 
