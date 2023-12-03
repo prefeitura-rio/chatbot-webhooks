@@ -1609,10 +1609,16 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
     parameters["dicionario_itens"] = itens_pagamento
     parameters["total_itens_pagamento"] = indice
     parameters["mensagem_divida_contribuinte"] = msg
-    parameters["lista_efs"] = parameters.get("lista_efs", []) if parameters.get("lista_efs", None) is not None else []
-    parameters["lista_cdas"] = parameters.get("lista_cdas", []) if parameters.get("lista_cdas", None) is not None else []
-    parameters["lista_guias"] = parameters.get("lista_guias", []) if parameters.get("lista_guias", None) is not None else []
-    
+    parameters["lista_efs"] = (
+        parameters.get("lista_efs", []) if parameters.get("lista_efs", None) is not None else []
+    )
+    parameters["lista_cdas"] = (
+        parameters.get("lista_cdas", []) if parameters.get("lista_cdas", None) is not None else []
+    )
+    parameters["lista_guias"] = (
+        parameters.get("lista_guias", []) if parameters.get("lista_guias", None) is not None else []
+    )
+
     try:
         parameters["guias_quantidade_total"] = len(parameters.get("lista_guias", []))
     except:
@@ -1620,14 +1626,14 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
 
     try:
         qtd_efs = len(parameters.get("lista_efs", []))
-    
+
     except:
         qtd_efs = 0
     try:
         qtde_cdas = len(parameters.get("lista_cdas", []))
     except:
         qtde_cdas = 0
-    
+
     parameters["efs_cdas_quantidade_total"] = qtd_efs + qtde_cdas
 
     # Definindo parâmetros salto_total parcelado e não parcelado
