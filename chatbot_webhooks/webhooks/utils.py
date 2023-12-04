@@ -1027,12 +1027,12 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     return distance_m
 
 
-async def get_address_protocols(address: Address) -> dict:
+async def get_address_protocols(address_data: dict) -> dict:
     """
     Returns user protocols from person_id.
 
     Args:
-        address (Address): id to be searched.
+        address_data (dict): address to be searched.
 
     Returns:
         dict: User info in the following format:
@@ -1046,9 +1046,15 @@ async def get_address_protocols(address: Address) -> dict:
                 ],
             }
     """
-    url = get_integrations_url("protocols")
+    url = get_integrations_url("address_protocols")
     key = config.CHATBOT_INTEGRATIONS_KEY
-    payload = {"address": address}
+    payload = {
+        "neighborhood_id": address_data["neighborhood_id"],
+        "street_id": address_data["street_id"],
+        "number": address_data["number"],
+        "complement": address_data["complement"],
+        "min_date": address_data["min_date"],
+    }
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}",

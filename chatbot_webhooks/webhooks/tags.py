@@ -1834,15 +1834,14 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
 
     ####
     try:
-        address = Address(
-            street="Rua Afonso Cavalcanti",  # logradouro_nome
-            street_code="060020",  # logradouro_id_ipp
-            neighborhood="Cidade Nova",  # logradouro_bairro
-            neighborhood_code="8",  # logradouro_id_bairro_ipp
-            number="455",
-            locality="",
-            zip_code="",
-        )
+        address = {
+            "neighborhood_id":"8",
+            "street_id":"060020",
+            "number":"455",
+            "complement":"",
+            "min_date": "2023-11-01",
+        }
+
         ad_protocols = await get_address_protocols(address)
         logger.info(ad_protocols)
     ####
