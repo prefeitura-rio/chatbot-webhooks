@@ -1685,8 +1685,6 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
 
     registros = await pgm_api(endpoint="v2/guiapagamento/emitir/avista", data=parametros_entrada)
 
-    logger.info(registros)
-
     # Tratamento padrão para erros
     if "erro" in registros:
         parameters["api_resposta_sucesso"] = False
@@ -1705,15 +1703,18 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
         base64_data = item["arquivoBase64"]
 
         item_message = (
+            f"Link: {pdf_file}"
+            f"\n"
             f"Código de barras: {barcode}"
-            "SIGNATURE_TYPE_DIVISION_MESSAGE"
-            f"FILE:{pdf_file}:{base64_data}"
-            "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            # "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            # f"FILE:{pdf_file}:{base64_data}"
+            # "SIGNATURE_TYPE_DIVISION_MESSAGE"
         )
 
         message_parts.append(item_message)
 
-    message = "".join(message_parts)
+    message = "\n\n".join(message_parts)
+    logger.info(message)
 
     return message, parameters
 
@@ -1756,8 +1757,6 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
         endpoint="v2/guiapagamento/emitir/regularizacao", data=parametros_entrada
     )
 
-    logger.info(registros)
-
     # Tratamento padrão para erros
     if "erro" in registros:
         parameters["api_resposta_sucesso"] = False
@@ -1776,15 +1775,17 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
         base64_data = item["arquivoBase64"]
 
         item_message = (
+            f"Link: {pdf_file}"
+            f"\n"
             f"Código de barras: {barcode}"
-            "SIGNATURE_TYPE_DIVISION_MESSAGE"
-            f"FILE:{pdf_file}:{base64_data}"
-            "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            # "SIGNATURE_TYPE_DIVISION_MESSAGE"
+            # f"FILE:{pdf_file}:{base64_data}"
+            # "SIGNATURE_TYPE_DIVISION_MESSAGE"
         )
 
         message_parts.append(item_message)
 
-    message = "".join(message_parts)
+    message = "\n\n".join(message_parts)
 
     return message, parameters
 
