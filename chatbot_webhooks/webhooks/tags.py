@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from copy import copy
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Tuple
 
 import aiohttp
@@ -1832,24 +1832,6 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
     parameters = request_data["sessionInfo"]["parameters"]
     cpf = parameters["usuario_cpf"]
 
-    ####
-    try:
-        address = Address(
-            street="Rua Afonso Cavalcanti",  # logradouro_nome
-            street_code="060020",  # logradouro_id_ipp
-            neighborhood="Cidade Nova",  # logradouro_bairro
-            neighborhood_code="8",  # logradouro_id_bairro_ipp
-            number="455",
-            locality="",
-            zip_code="",
-        )
-        ad_protocols = await get_address_protocols(address)
-        logger.info(ad_protocols)
-    ####
-    except:
-        logger.info("nao rolou nao")
-        pass
-
     try:
         logger.info(f"Buscando informações do usuário no SGRC com CPF {cpf}")
         user_info = await get_user_info(cpf)
@@ -2525,6 +2507,7 @@ async def rebi_checa_item_duplicado(request_data: dict) -> tuple[str, dict]:
         "armario": ["armario", "armário", "armario", "armários"],
         "telha": ["telha", "telhas"],
         "tanque": ["tanque", "tanques"],
+        "vaso": ["vaso", "vasos"],
     }
 
     if any(keyword in ultima_mensagem_usuario for keyword in duplicado["cama"]):
@@ -2537,7 +2520,85 @@ async def rebi_checa_item_duplicado(request_data: dict) -> tuple[str, dict]:
         message = "Você quis dizer Telha de alumínio, Telha de amianto ou Telha francesa/tijolo?\n\nPor favor, informe qual é o tipo de material e a quantidade."
     elif any(keyword in ultima_mensagem_usuario for keyword in duplicado["tanque"]):
         message = "Você quis dizer Tanque de lavagem de plástico/louça ou Tanque de concreto?\n\nPor favor, informe qual é o tipo de material e a quantidade."
+    elif any(keyword in ultima_mensagem_usuario for keyword in duplicado["vaso"]):
+        message = "Você quis dizer Vaso de planta com terra ou Vaso sanitário/bidê/lavatório?\n\nPor favor, informe qual é o tipo de material e a quantidade."
     else:
         pass
+
+    return message, parameters
+
+
+async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+
+    neighborhood_id = parameters.get("logradouro_id_bairro_ipp", None)
+    street_id = parameters.get("logradouro_id_ipp", None)
+    number = parameters.get("logradouro_numero", None)
+    complement = parameters.get("endereco_complemento", None)
+    if complement == "Não se aplica":
+        complement = None
+
+    # Um ano atrás
+    min_date = datetime.now() - timedelta(days=365)
+    # Formatando a data no formato "YYYY-MM-DD"
+    min_date = min_date.strftime("%Y-%m-%d")
+    # min_date = '2022-12-05'
+
+    try:
+        logger.info(
+            f"Buscando tickets do endereço no SGRC com ID_BAIRRO {neighborhood_id}, ID_LOGRADOURO {street_id}, NUMERO {number}, COMPLEMENTO {complement} e com data de abertura superior a {min_date}"
+        )
+        address = {
+            "neighborhood_id": neighborhood_id,
+            "street_id": street_id,
+            "number": number,
+            "complement": complement,
+            "min_date": min_date,
+        }
+        address_tickets = await get_address_protocols(address)
+    except:  # noqa
+        logger.error(f"Erro ao buscar informações desse endereço")
+        parameters["rebi_elegibilidade_endereco_abertura_chamado"] = False
+        parameters[
+            "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
+        ] = "erro_desconhecido"
+        return message, parameters
+
+    logger.info(address_tickets)
+
+    STATUS_TIPO_ABERTO = [
+        "Aberto",
+        "Em Andamento",
+        "Em andamento privado",
+        "Encaminhado à Comlurb - resíduo",
+        "Pendente",
+    ]
+
+    address_tickets = address_tickets[0]
+    for ticket in address_tickets["tickets"]:
+        if str(ticket["classification"]) == "1607":
+            if ticket["status"] in STATUS_TIPO_ABERTO:
+                parameters["rebi_elegibilidade_endereco_abertura_chamado"] = False
+                parameters[
+                    "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
+                ] = "chamado_aberto"
+                logger.info(f"Já existe um ticket aberto: {ticket}")
+                return message, parameters
+            else:
+                hoje = datetime.now().date()
+                data_fim = datetime.strptime(ticket["end_date"], "%Y-%m-%d").date()
+                if (hoje - data_fim).days <= 12:
+                    parameters["rebi_elegibilidade_endereco_abertura_chamado"] = False
+                    parameters[
+                        "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
+                    ] = "chamado_fechado_12_dias"
+                    logger.info(
+                        f"Um ticket desse subtipo foi fechado há {logger.info((hoje - data_fim).days)} dias, valor menor que 12: {ticket}"
+                    )
+                    return message, parameters
+
+    # Se não, passou em todos os critérios
+    parameters["rebi_elegibilidade_endereco_abertura_chamado"] = True
 
     return message, parameters
