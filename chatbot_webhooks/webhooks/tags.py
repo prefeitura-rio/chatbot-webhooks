@@ -2572,7 +2572,7 @@ async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tu
     # Formatando a data no formato "YYYY-MM-DD"
     min_date = min_date.strftime("%Y-%m-%d")
     #min_date = '2022-12-05'
-        
+
     try:
         logger.info(f"Buscando tickets do endereço no SGRC com ID_BAIRRO {neighborhood_id}, ID_LOGRADOURO {street_id}, NUMERO {number}, COMPLEMENTO {complement} e com data de abertura superior a {min_date}")
         address = {
