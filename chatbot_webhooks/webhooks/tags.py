@@ -1832,35 +1832,6 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
     parameters = request_data["sessionInfo"]["parameters"]
     cpf = parameters["usuario_cpf"]
 
-<<<<<<< HEAD
-    # ####
-    # try:
-    #     address = {
-    #         "neighborhood_id": "114",
-    #         "street_id": "131524",
-    #         "number": "118",
-    #         "complement": None,
-    #         "min_date": "2020-01-01",
-    #     }
-=======
-    ####
-    try:
-        address = {
-            "neighborhood_id": "8",
-            "street_id": "060020",
-            "number": "455",
-            "complement": "",
-            "min_date": "2023-11-01",
-        }
->>>>>>> 2907c9260ed3d77a6bf16316695692dcb0e61d38
-
-    #     ad_protocols = await get_address_protocols(address)
-    #     logger.info(ad_protocols)
-    # ####
-    # except:
-    #     logger.info("nao rolou nao")
-    #     pass
-
     try:
         logger.info(f"Buscando informações do usuário no SGRC com CPF {cpf}")
         user_info = await get_user_info(cpf)
