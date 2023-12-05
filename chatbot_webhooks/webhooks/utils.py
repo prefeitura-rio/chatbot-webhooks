@@ -1048,13 +1048,27 @@ async def get_address_protocols(address_data: dict) -> dict:
     """
     url = get_integrations_url("address_protocols")
     key = config.CHATBOT_INTEGRATIONS_KEY
+
+    try: 
+        neighborhood_id = int(address_data["neighborhood_id"])
+    except:
+        logger.info("Failed to convert neighborhood_id to int. Defaulted to 0 instead")
+        neighborhood_id = 0
+
+    try: 
+        street_id = int(address_data["street_id"])
+    except:
+        logger.info("Failed to convert street_id to int. Defaulted to 0 instead")
+        street_id = 0
+
     payload = {
-        "neighborhood_id": address_data["neighborhood_id"],
-        "street_id": address_data["street_id"],
+        "neighborhood_id": neighborhood_id,
+        "street_id": street_id,
         "number": address_data["number"],
         "complement": address_data["complement"],
         "min_date": address_data["min_date"],
     }
+    logger.info(payload)
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}",
