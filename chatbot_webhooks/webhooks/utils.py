@@ -1049,13 +1049,13 @@ async def get_address_protocols(address_data: dict) -> dict:
     url = get_integrations_url("address_protocols")
     key = config.CHATBOT_INTEGRATIONS_KEY
 
-    try: 
+    try:
         neighborhood_id = int(address_data["neighborhood_id"])
     except:
         logger.info("Failed to convert neighborhood_id to int. Defaulted to 0 instead")
         neighborhood_id = 0
 
-    try: 
+    try:
         street_id = int(address_data["street_id"])
     except:
         logger.info("Failed to convert street_id to int. Defaulted to 0 instead")
