@@ -2527,6 +2527,7 @@ async def rebi_checa_item_duplicado(request_data: dict) -> tuple[str, dict]:
 
     return message, parameters
 
+
 async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
@@ -2539,13 +2540,15 @@ async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tu
         complement = None
 
     # Um ano atrás
-    min_date = (datetime.now() - timedelta(days=365))
+    min_date = datetime.now() - timedelta(days=365)
     # Formatando a data no formato "YYYY-MM-DD"
     min_date = min_date.strftime("%Y-%m-%d")
-    #min_date = '2022-12-05'
+    # min_date = '2022-12-05'
 
     try:
-        logger.info(f"Buscando tickets do endereço no SGRC com ID_BAIRRO {neighborhood_id}, ID_LOGRADOURO {street_id}, NUMERO {number}, COMPLEMENTO {complement} e com data de abertura superior a {min_date}")
+        logger.info(
+            f"Buscando tickets do endereço no SGRC com ID_BAIRRO {neighborhood_id}, ID_LOGRADOURO {street_id}, NUMERO {number}, COMPLEMENTO {complement} e com data de abertura superior a {min_date}"
+        )
         address = {
             "neighborhood_id": neighborhood_id,
             "street_id": street_id,
@@ -2557,7 +2560,9 @@ async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tu
     except:  # noqa
         logger.error(f"Erro ao buscar informações desse endereço")
         parameters["rebi_elegibilidade_endereco_abertura_chamado"] = False
-        parameters["rebi_elegibilidade_endereco_abertura_chamado_justificativa"] = "erro_desconhecido"
+        parameters[
+            "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
+        ] = "erro_desconhecido"
         return message, parameters
 
     logger.info(address_tickets)
