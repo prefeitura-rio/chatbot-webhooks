@@ -1035,9 +1035,14 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             #     pass
             except SGRCBusinessRuleException as exc:
                 logger.exception(exc)
-                if str(exc) == "Cidadão possui chamados de Remoção Gratuita que ainda não foram finalizados.":
+                if (
+                    str(exc)
+                    == "Cidadão possui chamados de Remoção Gratuita que ainda não foram finalizados."
+                ):
                     parameters["solicitacao_retorno"] = "erro_rebi"
-                    parameters["rebi_elegibilidade_abertura_chamado_justificativa"] = "chamado_aberto"
+                    parameters[
+                        "rebi_elegibilidade_abertura_chamado_justificativa"
+                    ] = "chamado_aberto"
                 else:
                     parameters["solicitacao_retorno"] = "erro_interno"
                 parameters["solicitacao_criada"] = False
