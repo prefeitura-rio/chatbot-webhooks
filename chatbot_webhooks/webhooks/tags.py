@@ -1231,6 +1231,7 @@ async def validador_cpf(request_data: dict) -> tuple[str, dict, list]:
     message = ""
 
     parameters["usuario_cpf_valido"] = validate_CPF(parameters)
+    logger.info("Acabei de validar um CPF")
 
     return message, parameters  # , form_parameters_list
 
