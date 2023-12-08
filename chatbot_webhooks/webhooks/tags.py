@@ -1038,6 +1038,9 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 if (
                     str(exc)
                     == "Cidadão possui chamados de Remoção Gratuita que ainda não foram finalizados."
+                    or
+                    str(exc)
+                    == "Cidadão possui chamado de Remoção Gratuita que ainda não foi finalizado."
                 ):
                     parameters["solicitacao_retorno"] = "erro_rebi"
                     parameters[
