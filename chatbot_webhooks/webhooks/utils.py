@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import base64
 import json
+import math
 import re
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Union
+from itertools import cycle
 
 import aiohttp
 import geopandas as gpd
@@ -24,7 +26,7 @@ async def get_ipp_street_code(parameters: dict) -> dict:
     THRESHOLD = 0.8
     logradouro_google = parameters["logradouro_nome"]
     logradouro_ipp = parameters["logradouro_nome_ipp"]
-    logradouro_google_completo = f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
+    logradouro_completo = f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
 
     # Corte a string para considerar apenas o nome da rua
     for i in range(0, len(logradouro_ipp)):
@@ -39,18 +41,35 @@ async def get_ipp_street_code(parameters: dict) -> dict:
         logger.info(
             f"Similaridade alta o suficiente: {jaro_similarity(logradouro_google, logradouro_ipp)}"
         )
+        geocode_logradouro_ipp_url = str(
+            "https://pgeo3.rio.rj.gov.br/arcgis/rest/services/Geocode/Geocode_Logradouros_WGS84/GeocodeServer/findAddressCandidates?"
+            + f"Address={logradouro_completo}&Address2=&Address3=&Neighborhood=&City=&Subregion=&Region=&Postal=&PostalExt=&CountryCode=&SingleLine=&outFields=cl"
+            + "&maxLocations=&matchOutOfRange=true&langCode=&locationType=&sourceCountry=&category=&location=&searchExtent=&outSR=&magicKey=&preferredLabelValues=&f=pjson"
+        )
+        logger.info(f"Geocode IPP URL: {geocode_logradouro_ipp_url}")
         return parameters
     else:
-        logger.info(
-            f"logradouro_nome retornado pelo Google significantemente diferente do retornado pelo IPP. Threshold: {jaro_similarity(logradouro_google, logradouro_ipp)}"
-        )
-        logger.info(
-            f'Ou bairro IPP não identificado. Valor Bairro IPP: {parameters["logradouro_bairro_ipp"]}'
-        )
+        if jaro_similarity(logradouro_google, logradouro_ipp) < THRESHOLD:
+            logger.info(
+                f"logradouro_nome retornado pelo Google significantemente diferente do retornado pelo IPP. Threshold: {jaro_similarity(logradouro_google, logradouro_ipp)}"
+            )
+            if parameters["logradouro_bairro_ipp"] == " ":
+                logger.info(
+                    "Além dos endereços serem muito diferentes, não há bairro IPP. Então vou considerar o bairro do Google."
+                )
+                logradouro_completo = f'{logradouro_google}, {parameters.get("logradouro_bairro", parameters["logradouro_bairro_ipp"])}'
+        elif parameters["logradouro_bairro_ipp"] == " ":
+            logger.info(
+                f'Bairro IPP não identificado. Valor Bairro IPP: {parameters["logradouro_bairro_ipp"]}. Vou considerar o do Google.'
+            )
+            logger.info(
+                "Atualizando o logradouro que vai ser geolocalizado para considerar o logradouro_ipp em vez do Google"
+            )
+            logradouro_completo = f'{logradouro_ipp}, {parameters.get("logradouro_bairro", parameters["logradouro_bairro_ipp"])}'
         # Call IPP api
         geocode_logradouro_ipp_url = str(
             "https://pgeo3.rio.rj.gov.br/arcgis/rest/services/Geocode/Geocode_Logradouros_WGS84/GeocodeServer/findAddressCandidates?"
-            + f"Address={logradouro_google_completo}&Address2=&Address3=&Neighborhood=&City=&Subregion=&Region=&Postal=&PostalExt=&CountryCode=&SingleLine=&outFields=cl"
+            + f"Address={logradouro_completo}&Address2=&Address3=&Neighborhood=&City=&Subregion=&Region=&Postal=&PostalExt=&CountryCode=&SingleLine=&outFields=cl"
             + "&maxLocations=&matchOutOfRange=true&langCode=&locationType=&sourceCountry=&category=&location=&searchExtent=&outSR=&magicKey=&preferredLabelValues=&f=pjson"
         )
         logger.info(f"Geocode IPP URL: {geocode_logradouro_ipp_url}")
@@ -63,30 +82,51 @@ async def get_ipp_street_code(parameters: dict) -> dict:
                 data = await response.json(content_type="text/plain")
         try:
             candidates = list(data["candidates"])
-            logradouro_google_completo = (
-                f'{logradouro_google}, {parameters["logradouro_bairro_ipp"]}'
-            )
             logradouro_codigo = None
             logradouro_real = None
-            best_similarity = 0
-            for candidato in candidates:
-                similarity = jaro_similarity(candidato["address"], logradouro_google_completo)
-                if similarity > best_similarity and "," in candidato["address"]:
-                    if parameters["logradouro_bairro_ipp"] == " ":
-                        if "," in candidato["address"]:
-                            best_similarity = similarity
-                            logradouro_codigo = candidato["attributes"]["cl"]
-                            logradouro_real = candidato["address"]
-                    else:
+
+            if parameters["logradouro_bairro_ipp"] == " ":
+                best_distance = 1000000000
+                logger.info(
+                    f'Não foi identificado um bairro, então o logradouro escolhido vai ser o mais próximo do lat/long retornado pelo Google, que é lat:{parameters["logradouro_latitude"]} long:{parameters["logradouro_longitude"]}'
+                )
+                for candidato in candidates:
+                    distance = haversine_distance(
+                        parameters["logradouro_latitude"],
+                        parameters["logradouro_longitude"],
+                        candidato["location"]["y"],
+                        candidato["location"]["x"],
+                    )
+                    if (
+                        distance < best_distance and "," in candidato["address"]
+                    ):  # Só considera logradouros com bairro
+                        logger.info(
+                            f'Logradouro mais próximo encontrado: {candidato["address"]} com distância de {distance}'
+                        )
+                        best_distance = distance
+                        logradouro_codigo = candidato["attributes"]["cl"]
+                        logradouro_real = candidato["address"]
+                logger.info(
+                    f"Logradouro no IPP com maior semelhança: {logradouro_real}, cl: {logradouro_codigo}, distância: {best_distance} metros"
+                )
+            else:
+                best_similarity = 0
+                logger.info(
+                    "Já existe um bairro, então o logradouro vai ser selecionado de acordo similaridade de texto"
+                )
+                for candidato in candidates:
+                    similarity = jaro_similarity(candidato["address"], logradouro_completo)
+                    if (
+                        similarity > best_similarity and "," in candidato["address"]
+                    ):  # Só considera logradouros com bairro
                         best_similarity = similarity
                         logradouro_codigo = candidato["attributes"]["cl"]
                         logradouro_real = candidato["address"]
-
+                logger.info(
+                    f"Logradouro no IPP com maior semelhança: {logradouro_real}, cl: {logradouro_codigo}, semelhança: {best_similarity}"
+                )
             logger.info(
-                f"Logradouro encontrado no Google, com bairro do IPP: {logradouro_google_completo}"
-            )
-            logger.info(
-                f"Logradouro no IPP com maior semelhança: {logradouro_real}, cl: {logradouro_codigo}, semelhança: {best_similarity}"
+                f"Logradouro encontrado no Google, com bairro do IPP: {logradouro_completo}"
             )
 
             parameters["logradouro_id_ipp"] = logradouro_codigo
@@ -165,6 +205,8 @@ async def get_ipp_info(parameters: dict) -> bool:
         + "&langCode=&locationType=&featureTypes=&outSR=&preferredLabelValues=&f=pjson"
     )
 
+    logger.info(f"Geocode IPP URL: {geocode_ipp_url}")
+
     async with aiohttp.ClientSession() as session:
         async with session.request(
             "GET",
@@ -192,42 +234,47 @@ async def get_ipp_info(parameters: dict) -> bool:
         parameters["logradouro_nome_ipp"] = " "
 
     try:
-        # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
-        # na base do IPP e pegando o codigo correspondente
-        if parameters["logradouro_id_bairro_ipp"] == "0":
-            logger.info(
-                "Situação dos parâmetros da conversa antes de chamar o endpoint neighborhood_id"
-            )
-            logger.info(parameters)
-            url = get_integrations_url("neighborhood_id")
-            payload = json.dumps(
-                {
-                    "name": parameters["logradouro_bairro"]
-                    if "logradouro_bairro" in parameters
-                    else ""
-                }
-            )
+        ##########
+        ### O código abaixo estava causando mais problemas que ajudando, pois nem sempre o bairro identificado pelo Google
+        ### é o mesmo bairro cadastrado no IPP, e o SGRC só aceita o IPP. Então é melhor tentar achar o bairro por lá mesmo...
+        ##########
+        # # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
+        # # na base do IPP e pegando o codigo correspondente
+        # if parameters["logradouro_id_bairro_ipp"] == "0":
+        #     logger.info(
+        #         "Situação dos parâmetros da conversa antes de chamar o endpoint neighborhood_id"
+        #     )
+        #     logger.info(parameters)
+        #     url = get_integrations_url("neighborhood_id")
+        #     payload = json.dumps(
+        #         {
+        #             "name": parameters["logradouro_bairro"]
+        #             if "logradouro_bairro" in parameters
+        #             else ""
+        #         }
+        #     )
 
-            key = config.CHATBOT_INTEGRATIONS_KEY
+        #     key = config.CHATBOT_INTEGRATIONS_KEY
 
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {key}",
-            }
-            async with aiohttp.ClientSession() as session:
-                async with session.request("POST", url, headers=headers, data=payload) as response:
-                    json_response = await response.json(content_type=None)
-                    parameters["logradouro_id_bairro_ipp"] = json_response["id"]
-                    parameters["logradouro_bairro_ipp"] = json_response["name"]
-            # Caso mesmo assim um bairro não tenha sido encontrado, define temporariamente um valor não nulo
-            # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
-            if not parameters["logradouro_bairro_ipp"]:
-                logger.info("neighborhood_id foi chamado e nenhum bairro foi encontrado")
-                parameters["logradouro_bairro_ipp"] = " "
+        #     headers = {
+        #         "Content-Type": "application/json",
+        #         "Authorization": f"Bearer {key}",
+        #     }
+        #     async with aiohttp.ClientSession() as session:
+        #         async with session.request("POST", url, headers=headers, data=payload) as response:
+        #             json_response = await response.json(content_type=None)
+        #             parameters["logradouro_id_bairro_ipp"] = json_response["id"]
+        #             parameters["logradouro_bairro_ipp"] = json_response["name"]
+        #     # Caso mesmo assim um bairro não tenha sido encontrado, define temporariamente um valor não nulo
+        #     # para o bairro, de modo que o nome do bairro seja encontrado dentro da função get_ipp_street_code
+        if not parameters["logradouro_bairro_ipp"] or parameters["logradouro_id_bairro_ipp"] == "0":
+            # logger.info("neighborhood_id foi chamado e nenhum bairro foi encontrado")
+            logger.info("Geolocalização do IPP não retornou bairro")
+            parameters["logradouro_bairro_ipp"] = " "
 
-            logger.info(
-                f"Após chamar o endpoint neighborhood_id o valor do logradouro_bairro_ipp é: {parameters['logradouro_bairro_ipp']}"
-            )
+        # logger.info(
+        #     f"Após chamar o endpoint neighborhood_id o valor do logradouro_bairro_ipp é: {parameters['logradouro_bairro_ipp']}"
+        # )
 
         # Checa se o nome de logradouro informado pelo Google é similar o suficiente do informado pelo IPP
         # Se forem muito diferentes, chama outra api do IPP para achar um novo logradouro e substitui o
@@ -664,6 +711,61 @@ def validate_CPF(parameters: dict, form_parameters_list: list = []) -> bool:
     return True
 
 
+def validate_CPF2(numbers):
+    # Validação do primeiro dígito verificador:
+    sum_of_products = sum(a * b for a, b in zip(numbers[:9], range(10, 1, -1)))
+    expected_digit = (sum_of_products * 10) % 11 % 10
+    if numbers[9] != expected_digit:
+        return False
+
+    # Validação do segundo dígito verificador:
+    sum_of_products = sum(a * b for a, b in zip(numbers[:10], range(11, 1, -1)))
+    expected_digit = (sum_of_products * 10) % 11 % 10
+    if numbers[10] != expected_digit:
+        return False
+
+    return True
+
+
+def validate_CNPJ(cnpj: str) -> bool:
+    LENGTH_CNPJ = 14
+    if len(cnpj) != LENGTH_CNPJ:
+        return False
+
+    if cnpj in (c * LENGTH_CNPJ for c in "1234567890"):
+        return False
+
+    cnpj_r = cnpj[::-1]
+    for i in range(2, 0, -1):
+        cnpj_enum = zip(cycle(range(2, 10)), cnpj_r[i:])
+        dv = sum(map(lambda x: int(x[1]) * x[0], cnpj_enum)) * 10 % 11
+        if cnpj_r[(i - 1) : i] != str(dv % 10):
+            return False
+
+    return True
+
+
+def validate_cpf_cnpj(parameters: dict, form_parameters_list: list = []) -> bool:
+    """Efetua a validação de CPF ou CNPJ."""
+
+    # Obtém apenas os números do documento, ignorando pontuações
+    documento = parameters["usuario_cpf"]
+    numbers = [int(digit) for digit in documento if digit.isdigit()]
+    # Verifica se o documento possui 11 ou 14 números
+    if len(numbers) not in [11, 14] or len(set(numbers)) == 1:
+        return False
+
+    if len(numbers) == 11:  # CPF
+        logger.info("É um CPF")
+        return validate_CPF(parameters)
+
+    elif len(numbers) == 14:  # CNPJ
+        logger.info("É um CNPJ")
+        return validate_CNPJ("".join(map(str, numbers)))
+
+    return False
+
+
 def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
     """
     Valida se a escrita do email está correta ou não,
@@ -680,16 +782,19 @@ def validate_email(parameters: dict, form_parameters_list: list = []) -> bool:
 
 def validate_name(parameters: dict, form_parameters_list: list = []) -> bool:
     """
-    Valida se a string informada tem nome e sobrenome,
-    ou seja, possui um espaço (' ') no meio da string.
+    Valida se a string informada tem nome e um sobrenome válido,
+    ou seja, possui um espaço (' ') no meio da string
+    e tem um sobrenome com no mínimo 2 caracteres.
     Retorna, True: se estiver ok! E False: se não.
 
     Ex: validade_name("gabriel gazola")
     """
     nome = parameters["usuario_nome_cadastrado"]
+    logger.info(nome)
     try:
         nome_quebrado = nome.split(" ")
-        if len(nome_quebrado) > 2 or (len(nome_quebrado) == 2 and nome_quebrado[-1] != ""):
+        logger.info(nome_quebrado)
+        if len(nome_quebrado) >= 2 and any(len(element) >= 2 for element in nome_quebrado[1:]):
             return True
         else:
             return False
@@ -739,11 +844,11 @@ async def internal_request(
 async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     # Pegando o token de autenticação
     auth_response = await internal_request(
-        url="http://10.2.223.161/api/security/token",
+        url="https://epgmhom.rio.rj.gov.br:443/api/security/token",
         method="POST",
         request_kwargs={
             "verify": False,
-            "headers": {"Host": "epgmhom.rio.rj.gov.br"},
+            "headers": {},
             "data": {
                 "grant_type": "password",
                 "Consumidor": "chatbot",
@@ -758,11 +863,11 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
 
     # Fazer uma solicitação POST
     response = await internal_request(
-        url=f"http://10.2.223.161/api/{endpoint}",
+        url=f"https://epgmhom.rio.rj.gov.br:443/api/{endpoint}",
         method="POST",
         request_kwargs={
             "verify": False,
-            "headers": {"Host": "epgmhom.rio.rj.gov.br", "Authorization": token},
+            "headers": {"Authorization": token},
             "data": data,
         },
     )
@@ -771,16 +876,23 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     logger.info("Resposta da solicitação POST:")
     logger.info(response)
 
-    if response["success"]:
+    if response is None:
+        logger.info(
+            "A API não retornou nada. Valor esperado para o endpoint de cadastro de usuários."
+        )
+        return {"success": True}
+    elif response["success"]:
         logger.info("A API retornou registros.")
         return response["data"]
     else:
         logger.info(
             f'Algo deu errado durante a solicitação, segue justificativa: {response["data"][0]["value"]}'
         )
-        motivos = []
+        motivos = ""
         for item in response["data"]:
-            motivos.append(item["value"])
+            if motivos:
+                motivos += "\n\n"
+            motivos += item["value"]
         return {"erro": True, "motivos": motivos}
 
     # guias_protestadas = response_json["data"]
@@ -789,3 +901,186 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     #     print(i+1)
     #     print(guia)
     #     print("/n/n")
+
+
+async def get_user_protocols(person_id: str) -> dict:
+    """
+    Returns user protocols from person_id.
+
+    Args:
+        person_id (str): id to be searched.
+
+    Returns:
+        dict
+    """
+    url = get_integrations_url("protocols")
+    key = config.CHATBOT_INTEGRATIONS_KEY
+    payload = {"person_id": person_id}
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                "POST", url, headers=headers, data=json.dumps(payload)
+            ) as response:
+                response.raise_for_status()
+                data = await response.json(content_type=None)
+        return data
+    except Exception as exc:  # noqa
+        logger.error(exc)
+        raise Exception(f"Failed to get user protocols: {exc}") from exc
+
+
+async def rebi_combinacoes_permitidas(combinação_usuario: list) -> tuple[bool, str, list]:
+    COMBINACOES_VALIDAS = [
+        [6, 0, 0],
+        [5, 1, 0],
+        [0, 2, 0],
+        [0, 2, 1],
+        [0, 0, 1],
+    ]
+
+    rotulos = ["pequenos", "grandes", "especiais"]
+    unidades = ["unidades", "unidades", "unidades"]
+
+    combinacoes_validas = []
+
+    for combinação_valida in COMBINACOES_VALIDAS:
+        permitido = True
+        justificativa = ""
+
+        for i in range(len(combinação_valida)):
+            if combinação_usuario[i] > combinação_valida[i]:
+                permitido = False
+                justificativa = ""
+
+                if all(
+                    (user_val > 0) == (valid_val > 0)
+                    for user_val, valid_val in zip(combinação_usuario, combinação_valida)
+                ):
+                    if i == 0:
+                        justificativa += (
+                            "O limite para itens pequenos é de 6 items distintos ao solicitar só itens pequenos."
+                            " Quando solicitados juntamente a itens grandes, o limite é de 5 itens pequenos e 1 grande."
+                        )
+                    elif i == 1:
+                        justificativa += (
+                            "O limite para itens grandes é de 2 items distintos ao solicitar só itens grandes ou com mais 1 item especial. "
+                            "Quando solicitados juntamente a itens pequenos, o limite é de 5 itens pequenos e 1 grande."
+                        )
+                    elif i == 2:
+                        justificativa += (
+                            "O limite para itens especiais é de 1 item e não podem ser solicitados juntamente a itens pequenos, apenas grandes."
+                            " Nesse caso o limite é de 2 itens grandes e 1 especial."
+                        )
+                elif combinação_usuario[0] > 0 and combinação_usuario[2] > 0:
+                    justificativa += (
+                        "Itens pequenos não podem ser solicitados juntamente à itens especiais."
+                    )
+
+                break
+
+        if permitido:
+            permitido_adicionar = [
+                (valid_val - user_val)
+                for user_val, valid_val in zip(combinação_usuario, combinação_valida)
+            ]
+            combinacoes_validas.append(permitido_adicionar)
+
+    if combinacoes_validas:
+        return True, "", combinacoes_validas
+    else:
+        return False, justificativa, [0, 0, 0]
+
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    # Converte strings para floats, se necessário
+    lat1 = float(lat1) if isinstance(lat1, str) else lat1
+    lon1 = float(lon1) if isinstance(lon1, str) else lon1
+    lat2 = float(lat2) if isinstance(lat2, str) else lat2
+    lon2 = float(lon2) if isinstance(lon2, str) else lon2
+
+    # Raio médio da Terra em quilômetros
+    R = 6371.0
+
+    # Converte as coordenadas de graus para radianos
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = math.radians(lat2)
+    lon2_rad = math.radians(lon2)
+
+    # Diferenças entre as coordenadas
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+
+    # Fórmula de Haversine
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    # Distância em quilômetros
+    distance_km = R * c
+
+    # Distância em metros
+    distance_m = distance_km * 1000
+    return distance_m
+
+
+async def get_address_protocols(address_data: dict) -> dict:
+    """
+    Returns user protocols from person_id.
+
+    Args:
+        address_data (dict): address to be searched.
+
+    Returns:
+        dict: User info in the following format:
+            {
+                "id": 12345678,
+                "name": "Fulano de Tal",
+                "cpf": "12345678911",
+                "email": "fulano@detal.com",
+                "phones": [
+                    "21999999999",
+                ],
+            }
+    """
+    url = get_integrations_url("address_protocols")
+    key = config.CHATBOT_INTEGRATIONS_KEY
+
+    try:
+        neighborhood_id = int(address_data["neighborhood_id"])
+    except:
+        logger.info("Failed to convert neighborhood_id to int. Defaulted to 0 instead")
+        neighborhood_id = 0
+
+    try:
+        street_id = int(address_data["street_id"])
+    except:
+        logger.info("Failed to convert street_id to int. Defaulted to 0 instead")
+        street_id = 0
+
+    payload = {
+        "neighborhood_id": neighborhood_id,
+        "street_id": street_id,
+        "number": address_data["number"],
+        "complement": address_data["complement"],
+        "min_date": address_data["min_date"],
+    }
+    logger.info(payload)
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}",
+    }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                "POST", url, headers=headers, data=json.dumps(payload)
+            ) as response:
+                response.raise_for_status()
+                data = await response.json(content_type=None)
+        return data
+    except Exception as exc:  # noqa
+        logger.error(exc)
+        raise Exception(f"Failed to get address protocols: {exc}") from exc
