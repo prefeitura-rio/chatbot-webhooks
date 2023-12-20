@@ -235,8 +235,8 @@ async def get_ipp_info(parameters: dict) -> bool:
 
     try:
         ##########
-        ### O código abaixo estava causando mais problemas que ajudando, pois nem sempre o bairro identificado pelo Google
-        ### é o mesmo bairro cadastrado no IPP, e o SGRC só aceita o IPP. Então é melhor tentar achar o bairro por lá mesmo...
+        # O código abaixo estava causando mais problemas que ajudando, pois nem sempre o bairro identificado pelo Google
+        # é o mesmo bairro cadastrado no IPP, e o SGRC só aceita o IPP. Então é melhor tentar achar o bairro por lá mesmo...
         ##########
         # # Se o codigo_bairro retornado for 0, pegamos o codigo correto buscando o nome do bairro informado pelo Google
         # # na base do IPP e pegando o codigo correspondente
@@ -739,7 +739,7 @@ def validate_CNPJ(cnpj: str) -> bool:
     for i in range(2, 0, -1):
         cnpj_enum = zip(cycle(range(2, 10)), cnpj_r[i:])
         dv = sum(map(lambda x: int(x[1]) * x[0], cnpj_enum)) * 10 % 11
-        if cnpj_r[(i - 1) : i] != str(dv % 10):
+        if cnpj_r[(i - 1) : i] != str(dv % 10):  # noqa
             return False
 
     return True
@@ -844,7 +844,7 @@ async def internal_request(
 async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
     # Pegando o token de autenticação
     auth_response = await internal_request(
-        url="https://epgmhom.rio.rj.gov.br:443/api/security/token",
+        url=config.CHATBOT_PGM_API_URL + "/security/token",
         method="POST",
         request_kwargs={
             "verify": False,
@@ -863,7 +863,7 @@ async def pgm_api(endpoint: str = "", data: dict = {}) -> dict:
 
     # Fazer uma solicitação POST
     response = await internal_request(
-        url=f"https://epgmhom.rio.rj.gov.br:443/api/{endpoint}",
+        url=config.CHATBOT_PGM_API_URL + f"/{endpoint}",
         method="POST",
         request_kwargs={
             "verify": False,
@@ -942,8 +942,8 @@ async def rebi_combinacoes_permitidas(combinação_usuario: list) -> tuple[bool,
         [0, 0, 1],
     ]
 
-    rotulos = ["pequenos", "grandes", "especiais"]
-    unidades = ["unidades", "unidades", "unidades"]
+    # rotulos = ["pequenos", "grandes", "especiais"]
+    # unidades = ["unidades", "unidades", "unidades"]
 
     combinacoes_validas = []
 
@@ -1051,13 +1051,13 @@ async def get_address_protocols(address_data: dict) -> dict:
 
     try:
         neighborhood_id = int(address_data["neighborhood_id"])
-    except:
+    except:  # noqa
         logger.info("Failed to convert neighborhood_id to int. Defaulted to 0 instead")
         neighborhood_id = 0
 
     try:
         street_id = int(address_data["street_id"])
-    except:
+    except:  # noqa
         logger.info("Failed to convert street_id to int. Defaulted to 0 instead")
         street_id = 0
 

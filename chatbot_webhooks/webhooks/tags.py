@@ -1203,7 +1203,7 @@ async def identificador_ipp(request_data: dict) -> Tuple[str, dict]:
         if "logradouro_bairro_ipp" in parameters and parameters["logradouro_bairro_ipp"] is not None
         else ""
     )
-    ### RETIRANDO O CEP DAS INFORMAÇÕES A PEDIDO DO MALHEIRO
+    # RETIRANDO O CEP DAS INFORMAÇÕES A PEDIDO DO MALHEIRO
     # parameters["logradouro_mensagem_confirmacao"] += (
     #     f'CEP:  {parameters["logradouro_cep"]}\n'
     #     if "logradouro_cep" in parameters
@@ -1474,8 +1474,7 @@ async def da_consulta_protestos(request_data: dict) -> tuple[str, dict]:
 
     # Monta mensagem
     for i, cda in enumerate(registros):
-
-        if cda.get("numExercicio", "") != "" and cda.get("numExercicio", "") != None:
+        if cda.get("numExercicio", "") != "" and cda.get("numExercicio", "") is not None:
             ex_guia = (
                 f'{cda["numExercicio"]}/{cda["guia"]}'
                 if cda.get("guia", "") != ""
@@ -1632,17 +1631,17 @@ async def da_consulta_debitos_contribuinte(request_data: dict) -> tuple[str, dic
 
     try:
         parameters["guias_quantidade_total"] = len(parameters.get("lista_guias", []))
-    except:
+    except:  # noqa
         parameters["guias_quantidade_total"] = 0
 
     try:
         qtd_efs = len(parameters.get("lista_efs", []))
 
-    except:
+    except:  # noqa
         qtd_efs = 0
     try:
         qtde_cdas = len(parameters.get("lista_cdas", []))
-    except:
+    except:  # noqa
         qtde_cdas = 0
 
     parameters["efs_cdas_quantidade_total"] = qtd_efs + qtde_cdas
@@ -1711,7 +1710,7 @@ async def da_emitir_guia_pagamento_a_vista(request_data: dict) -> tuple[str, dic
         dicionario_guias_pagamento_a_vista[i] = item
         barcode = item["codigoDeBarras"]
         pdf_file = item["pdf"]
-        base64_data = item["arquivoBase64"]
+        # base64_data = item["arquivoBase64"]
 
         item_message = (
             f"Link: {pdf_file}"
@@ -1783,7 +1782,7 @@ async def da_emitir_guia_regularizacao(request_data: dict) -> tuple[str, dict]:
         dicionario_guias_pagamento_a_vista[i] = item
         barcode = item["codigoDeBarras"]
         pdf_file = item["pdf"]
-        base64_data = item["arquivoBase64"]
+        # base64_data = item["arquivoBase64"]
 
         item_message = (
             f"Link: {pdf_file}"
@@ -1974,11 +1973,11 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
 
     GRUPOS_CODIGO_NOME_PLURAL = {1: "pequenos", 2: "grandes", 3: "especiais"}
 
-    GRUPOS_CODIGO_EXEMPLOS = {
-        1: "luminárias, aspiradores, vaso de planta, etc.",
-        2: "camas de casal, fogões, sofá, etc.",
-        3: "entulho, tanque de concreto, armário de 4 portas, etc.",
-    }
+    # GRUPOS_CODIGO_EXEMPLOS = {
+    #     1: "luminárias, aspiradores, vaso de planta, etc.",
+    #     2: "camas de casal, fogões, sofá, etc.",
+    #     3: "entulho, tanque de concreto, armário de 4 portas, etc.",
+    # }
 
     material_info = {
         "id": {
@@ -2569,7 +2568,7 @@ async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tu
         }
         address_tickets = await get_address_protocols(address)
     except:  # noqa
-        logger.error(f"Erro ao buscar informações desse endereço")
+        logger.error("Erro ao buscar informações desse endereço")
         parameters["rebi_elegibilidade_endereco_abertura_chamado"] = False
         parameters[
             "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
