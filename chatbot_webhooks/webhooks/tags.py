@@ -1002,9 +1002,9 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 
             informacoes_complementares = parameters.get("rebi_informacoes_complementares", None)
             if informacoes_complementares:
-                descricao += f". INFORMAÇÕES COMPLEMENTARES: {informacoes_complementares}"
+                descricao = f"INFORMAÇÕES COMPLEMENTARES: {informacoes_complementares}. {descricao}"
             else:
-                descricao += "."
+                descricao += ""
 
             try:
                 logger.info("Serviço: Remoção de Entulho e Bens Inservíveis")
@@ -2331,7 +2331,7 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                     # f'Esse item é classificado como {value["grupo"]}'
                 )
         parameters["rebi_justificativa_combinacao_invalida"] = (
-            msg + "\n\nInforme uma quantidade de itens dentro desse limite."
+            msg #+ "\n\nInforme uma quantidade de itens dentro desse limite."
         )
         return message, parameters
 
@@ -2480,7 +2480,8 @@ async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
     )
 
     parameters["rebi_coleta_material_2"] = (
-        "Por favor, informe outro tipo de material e a quantidade de itens.\n"
+        #"Por favor, informe outro tipo de material e a quantidade de itens.\n"
+        "Por favor, informe o tipo de material a ser removido e a quantidade de itens\n"
         "\n"
         "Lembre-se de informar apenas *1 tipo* de material por vez. Depois você poderá acrescentar mais tipos de material até o limite estabelecido.\n"
         "\n"
