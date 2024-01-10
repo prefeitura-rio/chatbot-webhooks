@@ -29,6 +29,9 @@ async def input_ascsac(request: Request) -> Response:
     try:
         body_str = body_bytes.decode("utf-8")
         body_str = body_str.replace("\n", " ")
+        body_str = body_str.replace("\r", " ")
+        body_str = body_str.replace("\t", " ")
+        body_str = body_str.replace("\\", "")
         body = json.loads(body_str)
     except:  # noqa: E722
         logger.error(f"Request {request_id} body is not valid JSON")
