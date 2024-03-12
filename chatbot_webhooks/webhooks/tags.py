@@ -1120,15 +1120,13 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
 
             # As opções de tipo de tampão que a API aceita
             tipo_tampao_opcoes = {
-                "redondo_rua" : "Redondo localizado no meio da rua",
+                "redondo_rua": "Redondo localizado no meio da rua",
                 "redondo_calcada": "Redondo localizado no meio da calçada",
                 "quadrado_rua": "Quadrado localizado no meio da rua",
                 "quadrado_calcada": "Quadrado localizado no meio da calçada",
                 "grelha": "Grelha retangular vazada junto ao meio-fio",
             }
-            tipo_tampao = tipo_tampao_opcoes[
-                parameters["dbgrr_tipo_tampao"]
-            ]
+            tipo_tampao = tipo_tampao_opcoes[parameters["dbgrr_tipo_tampao"]]
 
             # Definindo parâmetros específicos do serviço
             specific_attributes = {
@@ -1136,7 +1134,9 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             }
 
             try:
-                logger.info("Serviço: Desobstrução de bueiros, galerias, ramais de águas pluviais e ralos")
+                logger.info(
+                    "Serviço: Desobstrução de bueiros, galerias, ramais de águas pluviais e ralos"
+                )
                 logger.info("Endereço")
                 logger.info(address)
                 logger.info("Usuario")
@@ -2449,9 +2449,9 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                     f'O limite para remoção de {key} é de {value["permitido"]} {value["unidade"]}.'
                     # f'Esse item é classificado como {value["grupo"]}'
                 )
-        parameters["rebi_justificativa_combinacao_invalida"] = (
-            msg #+ "\n\nInforme uma quantidade de itens dentro desse limite."
-        )
+        parameters[
+            "rebi_justificativa_combinacao_invalida"
+        ] = msg  # + "\n\nInforme uma quantidade de itens dentro desse limite."
         return message, parameters
 
     # Combinação inválida
@@ -2599,7 +2599,7 @@ async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
     )
 
     parameters["rebi_coleta_material_2"] = (
-        #"Por favor, informe outro tipo de material e a quantidade de itens.\n"
+        # "Por favor, informe outro tipo de material e a quantidade de itens.\n"
         "Por favor, informe o tipo de material a ser removido e a quantidade de itens\n"
         "\n"
         "Lembre-se de informar apenas *1 tipo* de material por vez. Depois você poderá acrescentar mais tipos de material até o limite estabelecido.\n"
