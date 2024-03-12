@@ -1077,6 +1077,125 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 parameters["solicitacao_criada"] = False
                 parameters["solicitacao_retorno"] = "erro_interno"
             return message, parameters
+        #
+        # 192 - Desobstrução de bueiros, galerias, ramais de águas pluviais e ralos
+        #
+        elif str(codigo_servico_1746) == "192":
+            logger.info(parameters)
+
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+            )
+
+            # As opções de tipo de tampão que a API aceita
+            tipo_tampao_opcoes = {
+                "redondo_rua": "Redondo localizado no meio da rua",
+                "redondo_calcada": "Redondo localizado no meio da calçada",
+                "quadrado_rua": "Quadrado localizado no meio da rua",
+                "quadrado_calcada": "Quadrado localizado no meio da calçada",
+                "grelha": "Grelha retangular vazada junto ao meio-fio",
+            }
+            tipo_tampao = tipo_tampao_opcoes[parameters["dbgrr_tipo_tampao"]]
+
+            # Definindo parâmetros específicos do serviço
+            specific_attributes = {
+                "Uo009Atr780TipoDeTampao": tipo_tampao,
+            }
+
+            try:
+                logger.info(
+                    "Serviço: Desobstrução de bueiros, galerias, ramais de águas pluviais e ralos"
+                )
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+                # Joins description
+                descricao_completa = parameters["servico_1746_descricao"]
+
+                ticket: NewTicket = await new_ticket(
+                    address=address,
+                    classification_code=192,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
         else:
             raise NotImplementedError("Classification code not implemented")
     except:  # noqa
@@ -1906,7 +2025,7 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
                             "rebi_elegibilidade_abertura_chamado_justificativa"
                         ] = "chamado_fechado_12_dias"
                         logger.info(
-                            f"Um ticket desse subtipo foi fechado há {logger.info((hoje - data_fim).days)} dias, valor menor que 12: {ticket}"
+                            f"Um ticket desse subtipo foi fechado há {(hoje - data_fim).days} dias, valor menor que 12: {ticket}"
                         )
                         return message, parameters
 
@@ -2330,9 +2449,9 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                     f'O limite para remoção de {key} é de {value["permitido"]} {value["unidade"]}.'
                     # f'Esse item é classificado como {value["grupo"]}'
                 )
-        parameters["rebi_justificativa_combinacao_invalida"] = (
-            msg #+ "\n\nInforme uma quantidade de itens dentro desse limite."
-        )
+        parameters[
+            "rebi_justificativa_combinacao_invalida"
+        ] = msg  # + "\n\nInforme uma quantidade de itens dentro desse limite."
         return message, parameters
 
     # Combinação inválida
@@ -2480,7 +2599,7 @@ async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
     )
 
     parameters["rebi_coleta_material_2"] = (
-        #"Por favor, informe outro tipo de material e a quantidade de itens.\n"
+        # "Por favor, informe outro tipo de material e a quantidade de itens.\n"
         "Por favor, informe o tipo de material a ser removido e a quantidade de itens\n"
         "\n"
         "Lembre-se de informar apenas *1 tipo* de material por vez. Depois você poderá acrescentar mais tipos de material até o limite estabelecido.\n"
