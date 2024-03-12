@@ -1127,7 +1127,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 "grelha": "Grelha retangular vazada junto ao meio-fio",
             }
             tipo_tampao = tipo_tampao_opcoes[
-                parameters["desobstrucao_bgrr_tipo_tampao"]
+                parameters["dbgrr_tipo_tampao"]
             ]
 
             # Definindo parâmetros específicos do serviço
