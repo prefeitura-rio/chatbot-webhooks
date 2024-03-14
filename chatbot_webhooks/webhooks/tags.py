@@ -2621,10 +2621,12 @@ async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
     )
 
     parameters["rebi_coleta_material_nomatch_1"] = (
-        "Desculpe, não consegui reconhecer esse tipo de material.\n\n" + parameters["rebi_coleta_material_1"]
+        "Desculpe, não consegui reconhecer esse tipo de material.\n\n"
+        + parameters["rebi_coleta_material_1"]
     )
     parameters["rebi_coleta_material_nomatch_2"] = (
-        "Desculpe, não consegui reconhecer esse tipo de material.\n\n" + REBI_COLETA_MATERIAL_1_SEM_EXEMPLOS
+        "Desculpe, não consegui reconhecer esse tipo de material.\n\n"
+        + REBI_COLETA_MATERIAL_1_SEM_EXEMPLOS
     )
 
     return message, parameters
