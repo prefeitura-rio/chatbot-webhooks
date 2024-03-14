@@ -2588,30 +2588,33 @@ async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
 
     parameters["rebi_coleta_material_1"] = (
-        "Por favor, informe o tipo de material a ser removido e a quantidade de itens\n"
+        "Por favor, informe que tipo de material será retirado e quantos itens são. Você só pode informar *um tipo de cada vez*. \n"
         "\n"
         "Exemplos:\n"
+        "- 2 aspiradores de pó \n"
+        "OU\n"
         "- 1 geladeira\n"
-        "- 2 aspiradores de pó\n"
-        "- 10 sacos de 20 litros de entulho.\n"
-        "\n"
-        "Informe apenas *1 tipo* de material por vez. Depois você poderá acrescentar mais tipos de material."
+        "OU\n"
+        "- 10 sacos de 20 litros de entulho."
     )
 
     parameters["rebi_coleta_material_2"] = (
-        # "Por favor, informe outro tipo de material e a quantidade de itens.\n"
-        "Por favor, informe o tipo de material a ser removido e a quantidade de itens\n"
+        "Agora você pode informar outro tipo de material e quantos itens são.\n"
         "\n"
-        "Lembre-se de informar apenas *1 tipo* de material por vez. Depois você poderá acrescentar mais tipos de material até o limite estabelecido.\n"
+        "Caso não queira adicionar mais nenhum item, responda AVANÇAR."
+    )
+
+    REBI_COLETA_MATERIAL_1_SEM_EXEMPLOS = (
+        "Por favor, informe que tipo de material será retirado e quantos itens são. Você só pode informar *um tipo de cada vez*. \n"
         "\n"
         "Caso não queira adicionar mais nenhum item, responda AVANÇAR."
     )
 
     parameters["rebi_coleta_material_nomatch_1"] = (
-        "Desculpe, não entendi.\n\n" + parameters["rebi_coleta_material_1"]
+        "Desculpe, não consegui reconhecer esse tipo de material.\n\n" + parameters["rebi_coleta_material_1"]
     )
     parameters["rebi_coleta_material_nomatch_2"] = (
-        "Desculpe, não entendi.\n\n" + parameters["rebi_coleta_material_2"]
+        "Desculpe, não consegui reconhecer esse tipo de material.\n\n" + REBI_COLETA_MATERIAL_1_SEM_EXEMPLOS
     )
 
     return message, parameters
