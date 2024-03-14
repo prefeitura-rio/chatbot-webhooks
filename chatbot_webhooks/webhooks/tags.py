@@ -1045,6 +1045,16 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                     parameters[
                         "rebi_elegibilidade_abertura_chamado_justificativa"
                     ] = "chamado_aberto"
+                elif (
+                    str(exc)
+                    == "Endereço possui chamados de Remoção Gratuita que ainda não foram finalizados."
+                    or str(exc)
+                    == "Endereço possui chamado de Remoção Gratuita que ainda não foi finalizado."
+                ):
+                    parameters["solicitacao_retorno"] = "erro_rebi"
+                    parameters[
+                        "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
+                    ] = "chamado_aberto"
                 else:
                     parameters["solicitacao_retorno"] = "erro_interno"
                 parameters["solicitacao_criada"] = False
