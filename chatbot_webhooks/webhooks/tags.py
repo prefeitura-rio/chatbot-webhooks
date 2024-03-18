@@ -1264,9 +1264,7 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
             }
 
             try:
-                logger.info(
-                    "Serviço: Reposição de tampão ou grelha"
-                )
+                logger.info("Serviço: Reposição de tampão ou grelha")
                 logger.info("Endereço")
                 logger.info(address)
                 logger.info("Usuario")
@@ -2872,7 +2870,7 @@ async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tu
 async def rebi_gerador_pergunta_quantidade(request_data: dict) -> tuple[str, dict]:
     message = ""
     parameters = request_data["sessionInfo"]["parameters"]
-    
+
     material_info = {
         "id": {
             0: 3,
@@ -3168,14 +3166,17 @@ async def rebi_gerador_pergunta_quantidade(request_data: dict) -> tuple[str, dic
         materiais_nomes = [parameters.get("rebi_material_nome", "").lower()]
 
     nome = materiais_nomes[0]
-    #limite_itens = material_info.loc[material_info["nome"] == nome, "limite_itens"].values[0]
-    unidade_medida_item = material_info.loc[
-        material_info["nome"] == nome, "unidade_medida"
-    ].values[0]
+    # limite_itens = material_info.loc[material_info["nome"] == nome, "limite_itens"].values[0]
+    unidade_medida_item = material_info.loc[material_info["nome"] == nome, "unidade_medida"].values[
+        0
+    ]
 
-    parameters["rebi_material_pergunta_nome_quantidade"] = f'{unidade_medida_item} de {nome.capitalize()}'
+    parameters[
+        "rebi_material_pergunta_nome_quantidade"
+    ] = f"{unidade_medida_item} de {nome.capitalize()}"
 
     return message, parameters
+
 
 async def rebi_orientacoes_finais_especificas(request_data: dict) -> tuple[str, dict]:
     message = ""
@@ -3188,22 +3189,31 @@ async def rebi_orientacoes_finais_especificas(request_data: dict) -> tuple[str, 
 
         if material_nome in ["entulho"]:
             message += (
-            "*Entulho*\n"
-            "\n"
-            "Esse serviço é destinado à remoção gratuita de entulhos de pequenas obras residenciais, como cascalho da parede quebrada, ou qualquer outro material que tenha cimento, ou telha quebrada que possa ser ensacada.\n"
-            "\n"
-            "Os entulhos deverão estar armazenados conforme:\n"
-            "\n"
-            "- Em sacos de 20 litros, com metragem de 32cm x 56cm, comprados em lojas de material de construção;\n"
-            "\n"
-            "- É proibida a utilização do saco de ráfia, ração para animal ou farinha;\n"
-            "\n"
-            "- Remoção máxima de 150 sacos de entulho de obras, por pedido;"
-        )
-        elif material_nome in ["cama de casal", "cama de solteiro", "galhadas", "armário de alumínio de cozinha/banheiro", "armário de 4 portas duplex/guarda roupa", "garrafas de cerveja / vidro"] and not indicador_mensagem_especifica:  
-            message += (
-                "- Camas e armários deverão estar desmontados e amarrados, galhos deverão estar amarrados, materiais cortantes (como vidro e vergalhão) deverão estar embalados, preferencialmente com papelão, avisando ao gari o tipo de material;"
+                "*Entulho*\n"
+                "\n"
+                "Esse serviço é destinado à remoção gratuita de entulhos de pequenas obras residenciais, como cascalho da parede quebrada, ou qualquer outro material que tenha cimento, ou telha quebrada que possa ser ensacada.\n"
+                "\n"
+                "Os entulhos deverão estar armazenados conforme:\n"
+                "\n"
+                "- Em sacos de 20 litros, com metragem de 32cm x 56cm, comprados em lojas de material de construção;\n"
+                "\n"
+                "- É proibida a utilização do saco de ráfia, ração para animal ou farinha;\n"
+                "\n"
+                "- Remoção máxima de 150 sacos de entulho de obras, por pedido;"
             )
+        elif (
+            material_nome
+            in [
+                "cama de casal",
+                "cama de solteiro",
+                "galhadas",
+                "armário de alumínio de cozinha/banheiro",
+                "armário de 4 portas duplex/guarda roupa",
+                "garrafas de cerveja / vidro",
+            ]
+            and not indicador_mensagem_especifica
+        ):
+            message += "- Camas e armários deverão estar desmontados e amarrados, galhos deverão estar amarrados, materiais cortantes (como vidro e vergalhão) deverão estar embalados, preferencialmente com papelão, avisando ao gari o tipo de material;"
             indicador_mensagem_especifica = True
 
     return message, parameters
