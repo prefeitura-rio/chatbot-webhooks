@@ -78,16 +78,22 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
         else:
             usuario_nome_cadastrado = ""
         requester = Requester(
-            email=parameters["usuario_email"]
-            if ("usuario_email" in parameters and "usuario_cpf") in parameters
-            else "",
-            cpf=parameters["usuario_cpf"]
-            if ("usuario_cpf" in parameters and "usuario_email") in parameters
-            else "",
+            email=(
+                parameters["usuario_email"]
+                if ("usuario_email" in parameters and "usuario_cpf") in parameters
+                else ""
+            ),
+            cpf=(
+                parameters["usuario_cpf"]
+                if ("usuario_cpf" in parameters and "usuario_email") in parameters
+                else ""
+            ),
             name=usuario_nome_cadastrado,
-            phones=Phones(parameters["usuario_telefone_cadastrado"])
-            if "usuario_telefone_cadastrado" in parameters
-            else "",
+            phones=(
+                Phones(parameters["usuario_telefone_cadastrado"])
+                if "usuario_telefone_cadastrado" in parameters
+                else ""
+            ),
         )
         # Get street number from Dialogflow, defaults to 1
         street_number = (
@@ -117,23 +123,29 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 ponto_referencia = ""
 
             address = Address(
-                street=parameters["logradouro_nome"]
-                if "logradouro_nome" in parameters
-                else "",  # logradouro_nome
-                street_code=parameters["logradouro_id_ipp"]
-                if "logradouro_id_ipp" in parameters
-                else "",  # logradouro_id_ipp
-                neighborhood=parameters["logradouro_bairro_ipp"]
-                if "logradouro_bairro_ipp" in parameters
-                else "",  # logradouro_bairro
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
-                if "logradouro_id_bairro_ipp" in parameters
-                else "",  # logradouro_id_bairro_ipp
+                street=(
+                    parameters["logradouro_nome"] if "logradouro_nome" in parameters else ""
+                ),  # logradouro_nome
+                street_code=(
+                    parameters["logradouro_id_ipp"] if "logradouro_id_ipp" in parameters else ""
+                ),  # logradouro_id_ipp
+                neighborhood=(
+                    parameters["logradouro_bairro_ipp"]
+                    if "logradouro_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_bairro
+                neighborhood_code=(
+                    parameters["logradouro_id_bairro_ipp"]
+                    if "logradouro_id_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_id_bairro_ipp
                 number=street_number,
                 locality=ponto_referencia,
-                zip_code=parameters["logradouro_cep"]
-                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
-                else "",
+                zip_code=(
+                    parameters["logradouro_cep"]
+                    if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                    else ""
+                ),
             )
             # Create new ticket
             try:
@@ -214,23 +226,29 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 ponto_referencia = ""
 
             address = Address(
-                street=parameters["logradouro_nome"]
-                if "logradouro_nome" in parameters
-                else "",  # logradouro_nome
-                street_code=parameters["logradouro_id_ipp"]
-                if "logradouro_id_ipp" in parameters
-                else "",  # logradouro_id_ipp
-                neighborhood=parameters["logradouro_bairro_ipp"]
-                if "logradouro_bairro_ipp" in parameters
-                else "",  # logradouro_bairro
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
-                if "logradouro_id_bairro_ipp" in parameters
-                else "",  # logradouro_id_bairro_ipp
+                street=(
+                    parameters["logradouro_nome"] if "logradouro_nome" in parameters else ""
+                ),  # logradouro_nome
+                street_code=(
+                    parameters["logradouro_id_ipp"] if "logradouro_id_ipp" in parameters else ""
+                ),  # logradouro_id_ipp
+                neighborhood=(
+                    parameters["logradouro_bairro_ipp"]
+                    if "logradouro_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_bairro
+                neighborhood_code=(
+                    parameters["logradouro_id_bairro_ipp"]
+                    if "logradouro_id_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_id_bairro_ipp
                 number=street_number,
                 locality=ponto_referencia,
-                zip_code=parameters["logradouro_cep"]
-                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
-                else "",
+                zip_code=(
+                    parameters["logradouro_cep"]
+                    if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                    else ""
+                ),
             )
             # Create new ticket
             try:
@@ -466,23 +484,29 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 ponto_referencia = ""
 
             address = Address(
-                street=parameters["logradouro_nome"]
-                if "logradouro_nome" in parameters
-                else "",  # logradouro_nome
-                street_code=parameters["logradouro_id_ipp"]
-                if "logradouro_id_ipp" in parameters
-                else "",  # logradouro_id_ipp
-                neighborhood=parameters["logradouro_bairro_ipp"]
-                if "logradouro_bairro_ipp" in parameters
-                else "",  # logradouro_bairro
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
-                if "logradouro_id_bairro_ipp" in parameters
-                else "",  # logradouro_id_bairro_ipp
+                street=(
+                    parameters["logradouro_nome"] if "logradouro_nome" in parameters else ""
+                ),  # logradouro_nome
+                street_code=(
+                    parameters["logradouro_id_ipp"] if "logradouro_id_ipp" in parameters else ""
+                ),  # logradouro_id_ipp
+                neighborhood=(
+                    parameters["logradouro_bairro_ipp"]
+                    if "logradouro_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_bairro
+                neighborhood_code=(
+                    parameters["logradouro_id_bairro_ipp"]
+                    if "logradouro_id_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_id_bairro_ipp
                 number=street_number,
                 locality=ponto_referencia,
-                zip_code=parameters["logradouro_cep"]
-                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
-                else "",
+                zip_code=(
+                    parameters["logradouro_cep"]
+                    if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                    else ""
+                ),
             )
 
             # Definindo parâmetros específicos do serviço
@@ -600,23 +624,29 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 ponto_referencia = ""
 
             address = Address(
-                street=parameters["logradouro_nome"]
-                if "logradouro_nome" in parameters
-                else "",  # logradouro_nome
-                street_code=parameters["logradouro_id_ipp"]
-                if "logradouro_id_ipp" in parameters
-                else "",  # logradouro_id_ipp
-                neighborhood=parameters["logradouro_bairro_ipp"]
-                if "logradouro_bairro_ipp" in parameters
-                else "",  # logradouro_bairro
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
-                if "logradouro_id_bairro_ipp" in parameters
-                else "",  # logradouro_id_bairro_ipp
+                street=(
+                    parameters["logradouro_nome"] if "logradouro_nome" in parameters else ""
+                ),  # logradouro_nome
+                street_code=(
+                    parameters["logradouro_id_ipp"] if "logradouro_id_ipp" in parameters else ""
+                ),  # logradouro_id_ipp
+                neighborhood=(
+                    parameters["logradouro_bairro_ipp"]
+                    if "logradouro_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_bairro
+                neighborhood_code=(
+                    parameters["logradouro_id_bairro_ipp"]
+                    if "logradouro_id_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_id_bairro_ipp
                 number=street_number,
                 locality=ponto_referencia,
-                zip_code=parameters["logradouro_cep"]
-                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
-                else "",
+                zip_code=(
+                    parameters["logradouro_cep"]
+                    if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                    else ""
+                ),
             )
 
             # Definindo parâmetros específicos do serviço
@@ -709,23 +739,29 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 ponto_referencia = ""
 
             address = Address(
-                street=parameters["logradouro_nome"]
-                if "logradouro_nome" in parameters
-                else "",  # logradouro_nome
-                street_code=parameters["logradouro_id_ipp"]
-                if "logradouro_id_ipp" in parameters
-                else "",  # logradouro_id_ipp
-                neighborhood=parameters["logradouro_bairro_ipp"]
-                if "logradouro_bairro_ipp" in parameters
-                else "",  # logradouro_bairro
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
-                if "logradouro_id_bairro_ipp" in parameters
-                else "",  # logradouro_id_bairro_ipp
+                street=(
+                    parameters["logradouro_nome"] if "logradouro_nome" in parameters else ""
+                ),  # logradouro_nome
+                street_code=(
+                    parameters["logradouro_id_ipp"] if "logradouro_id_ipp" in parameters else ""
+                ),  # logradouro_id_ipp
+                neighborhood=(
+                    parameters["logradouro_bairro_ipp"]
+                    if "logradouro_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_bairro
+                neighborhood_code=(
+                    parameters["logradouro_id_bairro_ipp"]
+                    if "logradouro_id_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_id_bairro_ipp
                 number=street_number,
                 locality=ponto_referencia,
-                zip_code=parameters["logradouro_cep"]
-                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
-                else "",
+                zip_code=(
+                    parameters["logradouro_cep"]
+                    if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                    else ""
+                ),
             )
 
             # As opções de tipo de estacionamento que a API aceita
@@ -834,23 +870,29 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 ponto_referencia = ""
 
             address = Address(
-                street=parameters["logradouro_nome"]
-                if "logradouro_nome" in parameters
-                else "",  # logradouro_nome
-                street_code=parameters["logradouro_id_ipp"]
-                if "logradouro_id_ipp" in parameters
-                else "",  # logradouro_id_ipp
-                neighborhood=parameters["logradouro_bairro_ipp"]
-                if "logradouro_bairro_ipp" in parameters
-                else "",  # logradouro_bairro
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
-                if "logradouro_id_bairro_ipp" in parameters
-                else "",  # logradouro_id_bairro_ipp
+                street=(
+                    parameters["logradouro_nome"] if "logradouro_nome" in parameters else ""
+                ),  # logradouro_nome
+                street_code=(
+                    parameters["logradouro_id_ipp"] if "logradouro_id_ipp" in parameters else ""
+                ),  # logradouro_id_ipp
+                neighborhood=(
+                    parameters["logradouro_bairro_ipp"]
+                    if "logradouro_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_bairro
+                neighborhood_code=(
+                    parameters["logradouro_id_bairro_ipp"]
+                    if "logradouro_id_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_id_bairro_ipp
                 number=street_number,
                 locality=ponto_referencia,
-                zip_code=parameters["logradouro_cep"]
-                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
-                else "",
+                zip_code=(
+                    parameters["logradouro_cep"]
+                    if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                    else ""
+                ),
             )
 
             # As opções de lampadas pagadas que a API aceita
@@ -961,24 +1003,30 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                 ponto_referencia = ""
 
             address = Address(
-                street=parameters["logradouro_nome"]
-                if "logradouro_nome" in parameters
-                else "",  # logradouro_nome
-                street_code=parameters["logradouro_id_ipp"]
-                if "logradouro_id_ipp" in parameters
-                else "",  # logradouro_id_ipp
-                neighborhood=parameters["logradouro_bairro_ipp"]
-                if "logradouro_bairro_ipp" in parameters
-                else "",  # logradouro_bairro
-                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
-                if "logradouro_id_bairro_ipp" in parameters
-                else "",  # logradouro_id_bairro_ipp
+                street=(
+                    parameters["logradouro_nome"] if "logradouro_nome" in parameters else ""
+                ),  # logradouro_nome
+                street_code=(
+                    parameters["logradouro_id_ipp"] if "logradouro_id_ipp" in parameters else ""
+                ),  # logradouro_id_ipp
+                neighborhood=(
+                    parameters["logradouro_bairro_ipp"]
+                    if "logradouro_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_bairro
+                neighborhood_code=(
+                    parameters["logradouro_id_bairro_ipp"]
+                    if "logradouro_id_bairro_ipp" in parameters
+                    else ""
+                ),  # logradouro_id_bairro_ipp
                 number=street_number,
                 complement=parameters.get("endereco_complemento", ""),
                 locality=ponto_referencia,
-                zip_code=parameters["logradouro_cep"]
-                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
-                else "",
+                zip_code=(
+                    parameters["logradouro_cep"]
+                    if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                    else ""
+                ),
                 address_type=parameters.get(
                     "endereco_tipo", "Casa"
                 ),  # Se tiver sido capturado pelo fluxo, informado. Se não, é padronizado como Casa.
@@ -1042,9 +1090,9 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                     == "Cidadão possui chamado de Remoção Gratuita que ainda não foi finalizado."
                 ):
                     parameters["solicitacao_retorno"] = "erro_rebi"
-                    parameters[
-                        "rebi_elegibilidade_abertura_chamado_justificativa"
-                    ] = "chamado_aberto"
+                    parameters["rebi_elegibilidade_abertura_chamado_justificativa"] = (
+                        "chamado_aberto"
+                    )
                 else:
                     parameters["solicitacao_retorno"] = "erro_interno"
                 parameters["solicitacao_criada"] = False
@@ -1815,9 +1863,9 @@ async def da_cadastro(request_data: dict) -> tuple[str, dict]:
     except:  # noqa
         # Informações chegaram inválidas
         parameters["api_resposta_sucesso"] = False
-        parameters[
-            "api_descricao_erro"
-        ] = "Houve um erro na coleta de dados e não será possível realizar o seu cadastro no momento. Por favor, tente mais tarde."
+        parameters["api_descricao_erro"] = (
+            "Houve um erro na coleta de dados e não será possível realizar o seu cadastro no momento. Por favor, tente mais tarde."
+        )
         return message, parameters
 
     registros = await pgm_api(endpoint="v2/notificacao/atualizar", data=parametros_entrada)
@@ -1892,9 +1940,9 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
             if str(ticket["classification"]) == "1607":
                 if ticket["status"] in STATUS_TIPO_ABERTO:
                     parameters["rebi_elegibilidade_abertura_chamado"] = False
-                    parameters[
-                        "rebi_elegibilidade_abertura_chamado_justificativa"
-                    ] = "chamado_aberto"
+                    parameters["rebi_elegibilidade_abertura_chamado_justificativa"] = (
+                        "chamado_aberto"
+                    )
                     logger.info(f"Já existe um ticket aberto: {ticket}")
                     return message, parameters
                 else:
@@ -1902,9 +1950,9 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
                     data_fim = datetime.strptime(ticket["end_date"], "%Y-%m-%d").date()
                     if (hoje - data_fim).days <= 12:
                         parameters["rebi_elegibilidade_abertura_chamado"] = False
-                        parameters[
-                            "rebi_elegibilidade_abertura_chamado_justificativa"
-                        ] = "chamado_fechado_12_dias"
+                        parameters["rebi_elegibilidade_abertura_chamado_justificativa"] = (
+                            "chamado_fechado_12_dias"
+                        )
                         logger.info(
                             f"Um ticket desse subtipo foi fechado há {logger.info((hoje - data_fim).days)} dias, valor menor que 12: {ticket}"
                         )
@@ -2331,7 +2379,7 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                     # f'Esse item é classificado como {value["grupo"]}'
                 )
         parameters["rebi_justificativa_combinacao_invalida"] = (
-            msg #+ "\n\nInforme uma quantidade de itens dentro desse limite."
+            msg  # + "\n\nInforme uma quantidade de itens dentro desse limite."
         )
         return message, parameters
 
@@ -2480,7 +2528,7 @@ async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
     )
 
     parameters["rebi_coleta_material_2"] = (
-        #"Por favor, informe outro tipo de material e a quantidade de itens.\n"
+        # "Por favor, informe outro tipo de material e a quantidade de itens.\n"
         "Por favor, informe o tipo de material a ser removido e a quantidade de itens\n"
         "\n"
         "Lembre-se de informar apenas *1 tipo* de material por vez. Depois você poderá acrescentar mais tipos de material até o limite estabelecido.\n"
@@ -2571,9 +2619,9 @@ async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tu
     except:  # noqa
         logger.error("Erro ao buscar informações desse endereço")
         parameters["rebi_elegibilidade_endereco_abertura_chamado"] = False
-        parameters[
-            "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
-        ] = "erro_desconhecido"
+        parameters["rebi_elegibilidade_endereco_abertura_chamado_justificativa"] = (
+            "erro_desconhecido"
+        )
         return message, parameters
 
     logger.info(address_tickets)
@@ -2591,9 +2639,9 @@ async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tu
         if str(ticket["classification"]) == "1607":
             if ticket["status"] in STATUS_TIPO_ABERTO:
                 parameters["rebi_elegibilidade_endereco_abertura_chamado"] = False
-                parameters[
-                    "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
-                ] = "chamado_aberto"
+                parameters["rebi_elegibilidade_endereco_abertura_chamado_justificativa"] = (
+                    "chamado_aberto"
+                )
                 logger.info(f"Já existe um ticket aberto: {ticket}")
                 return message, parameters
             else:
@@ -2601,9 +2649,9 @@ async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tu
                 data_fim = datetime.strptime(ticket["end_date"], "%Y-%m-%d").date()
                 if (hoje - data_fim).days <= 12:
                     parameters["rebi_elegibilidade_endereco_abertura_chamado"] = False
-                    parameters[
-                        "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
-                    ] = "chamado_fechado_12_dias"
+                    parameters["rebi_elegibilidade_endereco_abertura_chamado_justificativa"] = (
+                        "chamado_fechado_12_dias"
+                    )
                     logger.info(
                         f"Um ticket desse subtipo foi fechado há {logger.info((hoje - data_fim).days)} dias, valor menor que 12: {ticket}"
                     )
