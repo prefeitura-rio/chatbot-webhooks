@@ -1045,9 +1045,256 @@ async def abrir_chamado_sgrc(request_data: dict) -> Tuple[str, dict]:
                     parameters[
                         "rebi_elegibilidade_abertura_chamado_justificativa"
                     ] = "chamado_aberto"
+                elif (
+                    str(exc)
+                    == "Endereço possui chamados de Remoção Gratuita que ainda não foram finalizados."
+                    or str(exc)
+                    == "Endereço possui chamado de Remoção Gratuita que ainda não foi finalizado."
+                ):
+                    parameters["solicitacao_retorno"] = "erro_rebi"
+                    parameters[
+                        "rebi_elegibilidade_endereco_abertura_chamado_justificativa"
+                    ] = "chamado_aberto"
                 else:
                     parameters["solicitacao_retorno"] = "erro_interno"
                 parameters["solicitacao_criada"] = False
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
+        #
+        # 192 - Desobstrução de bueiros, galerias, ramais de águas pluviais e ralos
+        #
+        elif str(codigo_servico_1746) == "192":
+            logger.info(parameters)
+
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+            )
+
+            # As opções de tipo de tampão que a API aceita
+            tipo_tampao_opcoes = {
+                "redondo_rua": "Redondo localizado no meio da rua",
+                "redondo_calcada": "Redondo localizado no meio da calçada",
+                "quadrado_rua": "Quadrado localizado no meio da rua",
+                "quadrado_calcada": "Quadrado localizado no meio da calçada",
+                "grelha": "Grelha retangular vazada junto ao meio-fio",
+            }
+            tipo_tampao = tipo_tampao_opcoes[parameters["tipo_tampao"]]
+
+            # Definindo parâmetros específicos do serviço
+            specific_attributes = {
+                "Uo009Atr780TipoDeTampao": tipo_tampao,
+            }
+
+            try:
+                logger.info(
+                    "Serviço: Desobstrução de bueiros, galerias, ramais de águas pluviais e ralos"
+                )
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+                # Joins description
+                descricao_completa = parameters["servico_1746_descricao"]
+
+                ticket: NewTicket = await new_ticket(
+                    address=address,
+                    classification_code=192,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCInvalidBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCMalformedBodyException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except ValueError as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            except SGRCDuplicateTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCEquivalentTicketException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_ticket_duplicado"
+            except SGRCInternalErrorException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_sgrc"
+            except Exception as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
+            return message, parameters
+        #
+        # 2569 - Reposição de tampão ou grelha
+        #
+        elif str(codigo_servico_1746) == "2569":
+            logger.info(parameters)
+
+            # Considera o ponto de referência informado pelo usuário caso não tenha sido
+            # identificado algum outro pelo Google
+            if (
+                "logradouro_ponto_referencia_identificado" in parameters
+                and parameters["logradouro_ponto_referencia_identificado"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia_identificado"]
+            elif (
+                "logradouro_ponto_referencia" in parameters
+                and parameters["logradouro_ponto_referencia"]
+            ):
+                ponto_referencia = parameters["logradouro_ponto_referencia"]
+            else:
+                ponto_referencia = ""
+
+            address = Address(
+                street=parameters["logradouro_nome"]
+                if "logradouro_nome" in parameters
+                else "",  # logradouro_nome
+                street_code=parameters["logradouro_id_ipp"]
+                if "logradouro_id_ipp" in parameters
+                else "",  # logradouro_id_ipp
+                neighborhood=parameters["logradouro_bairro_ipp"]
+                if "logradouro_bairro_ipp" in parameters
+                else "",  # logradouro_bairro
+                neighborhood_code=parameters["logradouro_id_bairro_ipp"]
+                if "logradouro_id_bairro_ipp" in parameters
+                else "",  # logradouro_id_bairro_ipp
+                number=street_number,
+                locality=ponto_referencia,
+                zip_code=parameters["logradouro_cep"]
+                if "logradouro_cep" in parameters and parameters["logradouro_cep"]
+                else "",
+            )
+
+            # As opções de tipo de tampão que a API aceita
+            tipo_tampao_opcoes = {
+                "redondo_rua": "Redondo localizado no meio da rua",
+                "redondo_calcada": "Redondo localizado no meio da calçada",
+                "quadrado_rua": "Quadrado localizado no meio da rua",
+                "quadrado_calcada": "Quadrado localizado no meio da calçada",
+                "grelha": "Grelha retangular vazada junto ao meio-fio",
+            }
+            tipo_tampao = tipo_tampao_opcoes[parameters["tipo_tampao"]]
+
+            # Definindo parâmetros específicos do serviço
+            specific_attributes = {
+                "Uo009Atr780TipoDeTampao": tipo_tampao,
+                "riscoAcidente": "Indefinido",
+            }
+
+            try:
+                logger.info("Serviço: Reposição de tampão ou grelha")
+                logger.info("Endereço")
+                logger.info(address)
+                logger.info("Usuario")
+                logger.info(requester)
+                logger.info("--------------------")
+                logger.info("Informações Específicas")
+                logger.info(specific_attributes)
+                logger.info("--------------------")
+                # Joins description
+                descricao_completa = parameters["servico_1746_descricao"]
+
+                ticket: NewTicket = await new_ticket(
+                    address=address,
+                    classification_code=2569,
+                    description=descricao_completa,
+                    requester=requester,
+                    specific_attributes=specific_attributes,
+                )
+                # Atributos do ticket
+                parameters["solicitacao_protocolo"] = ticket.protocol_id
+                parameters["solicitacao_criada"] = True
+                parameters["solicitacao_retorno"] = "sem_erro"
+                # ticket.ticket_id
+            # except BaseSGRCException as exc:
+            #     # Do something with the exception
+            #     pass
+            except SGRCBusinessRuleException as exc:
+                logger.exception(exc)
+                parameters["solicitacao_criada"] = False
+                parameters["solicitacao_retorno"] = "erro_interno"
             except SGRCInvalidBodyException as exc:
                 logger.exception(exc)
                 parameters["solicitacao_criada"] = False
@@ -1906,7 +2153,7 @@ async def rebi_elegibilidade_abertura_chamado(request_data: dict) -> tuple[str, 
                             "rebi_elegibilidade_abertura_chamado_justificativa"
                         ] = "chamado_fechado_12_dias"
                         logger.info(
-                            f"Um ticket desse subtipo foi fechado há {logger.info((hoje - data_fim).days)} dias, valor menor que 12: {ticket}"
+                            f"Um ticket desse subtipo foi fechado há {(hoje - data_fim).days} dias, valor menor que 12: {ticket}"
                         )
                         return message, parameters
 
@@ -2330,9 +2577,9 @@ async def rebi_avaliador_combinacoes_itens(request_data: dict) -> tuple[str, dic
                     f'O limite para remoção de {key} é de {value["permitido"]} {value["unidade"]}.'
                     # f'Esse item é classificado como {value["grupo"]}'
                 )
-        parameters["rebi_justificativa_combinacao_invalida"] = (
-            msg #+ "\n\nInforme uma quantidade de itens dentro desse limite."
-        )
+        parameters[
+            "rebi_justificativa_combinacao_invalida"
+        ] = msg  # + "\n\nInforme uma quantidade de itens dentro desse limite."
         return message, parameters
 
     # Combinação inválida
@@ -2469,30 +2716,35 @@ async def rebi_define_texto(request_data: dict) -> tuple[str, dict]:
     parameters = request_data["sessionInfo"]["parameters"]
 
     parameters["rebi_coleta_material_1"] = (
-        "Por favor, informe o tipo de material a ser removido e a quantidade de itens\n"
+        "Por favor, informe que tipo de material será retirado e quantos itens são. Você só pode informar *um tipo de cada vez*. \n"
         "\n"
         "Exemplos:\n"
+        "- 2 aspiradores de pó \n"
+        "OU\n"
         "- 1 geladeira\n"
-        "- 2 aspiradores de pó\n"
-        "- 10 sacos de 20 litros de entulho.\n"
-        "\n"
-        "Informe apenas *1 tipo* de material por vez. Depois você poderá acrescentar mais tipos de material."
+        "OU\n"
+        "- 10 sacos de 20 litros de entulho."
     )
 
     parameters["rebi_coleta_material_2"] = (
-        #"Por favor, informe outro tipo de material e a quantidade de itens.\n"
-        "Por favor, informe o tipo de material a ser removido e a quantidade de itens\n"
+        "Agora você pode informar outro tipo de material e quantos itens são.\n"
         "\n"
-        "Lembre-se de informar apenas *1 tipo* de material por vez. Depois você poderá acrescentar mais tipos de material até o limite estabelecido.\n"
+        "Caso não queira adicionar mais nenhum item, responda AVANÇAR."
+    )
+
+    REBI_COLETA_MATERIAL_1_SEM_EXEMPLOS = (
+        "Por favor, informe que tipo de material será retirado e quantos itens são. Você só pode informar *um tipo de cada vez*. \n"
         "\n"
         "Caso não queira adicionar mais nenhum item, responda AVANÇAR."
     )
 
     parameters["rebi_coleta_material_nomatch_1"] = (
-        "Desculpe, não entendi.\n\n" + parameters["rebi_coleta_material_1"]
+        "Desculpe, não consegui reconhecer esse tipo de material.\n\n"
+        + parameters["rebi_coleta_material_1"]
     )
     parameters["rebi_coleta_material_nomatch_2"] = (
-        "Desculpe, não entendi.\n\n" + parameters["rebi_coleta_material_2"]
+        "Desculpe, não consegui reconhecer esse tipo de material.\n\n"
+        + REBI_COLETA_MATERIAL_1_SEM_EXEMPLOS
     )
 
     return message, parameters
@@ -2611,5 +2863,357 @@ async def rebi_elegibilidade_endereco_abertura_chamado(request_data: dict) -> tu
 
     # Se não, passou em todos os critérios
     parameters["rebi_elegibilidade_endereco_abertura_chamado"] = True
+
+    return message, parameters
+
+
+async def rebi_gerador_pergunta_quantidade(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+
+    material_info = {
+        "id": {
+            0: 3,
+            1: 5,
+            2: 6,
+            3: 7,
+            4: 8,
+            5: 9,
+            6: 10,
+            7: 11,
+            8: 12,
+            9: 13,
+            10: 14,
+            11: 15,
+            12: 16,
+            13: 17,
+            14: 18,
+            15: 19,
+            16: 20,
+            17: 21,
+            18: 22,
+            19: 23,
+            20: 24,
+            21: 25,
+            22: 26,
+            23: 27,
+            24: 28,
+            25: 29,
+            26: 30,
+            27: 31,
+            28: 32,
+            29: 33,
+            30: 34,
+            31: 35,
+            32: 36,
+            33: 37,
+            34: 38,
+            35: 39,
+            36: 40,
+            37: 41,
+            38: 42,
+            39: 43,
+            40: 44,
+            41: 45,
+            42: 46,
+            43: 47,
+            44: 48,
+            45: 49,
+            46: 50,
+            47: 51,
+            48: 52,
+            49: 53,
+            50: 54,
+            51: 55,
+            52: 56,
+            53: 57,
+            54: 58,
+        },
+        "nome": {
+            0: "ar condicionado",
+            1: "armário de alumínio de cozinha/banheiro",
+            2: "armário de 4 portas duplex/guarda roupa",
+            3: "aspirador de pó",
+            4: "banheira",
+            5: "bicicleta/velocípede",
+            6: "boiler",
+            7: "cadeiras/bancos",
+            8: "caixonete de porta/janela",
+            9: "canos/tubos/trilhos de cortina",
+            10: "cama de casal",
+            11: "cama de solteiro",
+            12: "carpete/tapete/passadeira/colchonete",
+            13: "cofre",
+            14: "colchão de casal",
+            15: "colchão de solteiro",
+            16: "computador / impressora",
+            17: "entulho",
+            18: "escada",
+            19: "espelho/quadro/persiana",
+            20: "exaustor/sugar/coifa",
+            21: "estante/rack",
+            22: "fogão",
+            23: "forno de microondas/elétrico",
+            24: "galhadas",
+            25: "garrafas de cerveja / vidro",
+            26: "geladeira/freezer",
+            27: "gesso / azulejos /cerâmicas",
+            28: "grade de madeira ou ferro",
+            29: "latão de 200 litros",
+            30: "latas/baldes/bacias",
+            31: "livros/revistas/jornais/papelão",
+            32: "luminária",
+            33: "madeiras/caixote/estrados/vulcapiso",
+            34: "máquina de lavar roupas/louças",
+            35: "máquina de costura",
+            36: "mesa",
+            37: "outros",
+            38: "pedras",
+            39: "pias/bancadas/cubas",
+            40: "porta/janela/basculante",
+            41: "sofá/poltrona",
+            42: "tábua de passar roupas",
+            43: "tacos",
+            44: "tanque de lavagem plástico/louça",
+            45: "tanque de concreto",
+            46: "telha de aluminio",
+            47: "telha de amianto",
+            48: "telha francesa/tijolo",
+            49: "tronco de árvore",
+            50: "vaso de planta com terra",
+            51: "vaso sanitário/bidê/lavatório",
+            52: "aquecedor/cx descarga",
+            53: "aparelho de som/tv/vídeo/vitrola",
+            54: "armário peq até 3 portas/cômoda",
+        },
+        "limite_itens": {
+            0: 1,
+            1: 2,
+            2: 1,
+            3: 2,
+            4: 1,
+            5: 2,
+            6: 1,
+            7: 6,
+            8: 5,
+            9: 5,
+            10: 1,
+            11: 2,
+            12: 5,
+            13: 1,
+            14: 1,
+            15: 2,
+            16: 2,
+            17: 150,
+            18: 1,
+            19: 6,
+            20: 2,
+            21: 1,
+            22: 1,
+            23: 1,
+            24: 12,
+            25: 5,
+            26: 1,
+            27: 10,
+            28: 4,
+            29: 1,
+            30: 10,
+            31: 5,
+            32: 5,
+            33: 5,
+            34: 1,
+            35: 2,
+            36: 2,
+            37: 5,
+            38: 10,
+            39: 3,
+            40: 4,
+            41: 2,
+            42: 2,
+            43: 150,
+            44: 2,
+            45: 150,
+            46: 5,
+            47: 20,
+            48: 150,
+            49: 5,
+            50: 2,
+            51: 3,
+            52: 2,
+            53: 2,
+            54: 1,
+        },
+        "unidade_medida": {
+            0: "unidade",
+            1: "unidades",
+            2: "unidade desmontada",
+            3: "unidades",
+            4: "unidade",
+            5: "unidades",
+            6: "unidade",
+            7: "unidades",
+            8: "amarrados de até 1,5 m",
+            9: "amarrados de até 1,5 m",
+            10: "unidade desmontada",
+            11: "unidades desmontadas",
+            12: "rolos",
+            13: "unidade até 60 kg",
+            14: "unidade",
+            15: "unidades",
+            16: "unidades",
+            17: "sacos plásticos de até 20 litros",
+            18: "unidade",
+            19: "unidades",
+            20: "unidades",
+            21: "unidade desmontada",
+            22: "unidade",
+            23: "unidade",
+            24: "amarrados",
+            25: "caixas/engradados até 10kg",
+            26: "unidade",
+            27: "amarrados/caixas até 10kg",
+            28: "unidades",
+            29: "unidade",
+            30: "latas até 20 litros",
+            31: "caixas/sacos/amarrados de até 10 kg",
+            32: "unidades",
+            33: "amarrados até 1,5m",
+            34: "unidade",
+            35: "unidades",
+            36: "unidades",
+            37: "unidades",
+            38: "unidades até 10 kg",
+            39: "unidades",
+            40: "unidades",
+            41: "unidades",
+            42: "unidades",
+            43: "sacos plásticos de até 20 litros",
+            44: "unidades",
+            45: "sacos plásticos de até 20 litros",
+            46: "unidades",
+            47: "pedaços até 10 kg",
+            48: "unidades",
+            49: "unidades de até 10 kg",
+            50: "unidades",
+            51: "unidades",
+            52: "unidades",
+            53: "unidades",
+            54: "unidade desmontada",
+        },
+        "grupo": {
+            0: 2,
+            1: 1,
+            2: 3,
+            3: 1,
+            4: 2,
+            5: 1,
+            6: 2,
+            7: 1,
+            8: 1,
+            9: 1,
+            10: 2,
+            11: 1,
+            12: 1,
+            13: 2,
+            14: 2,
+            15: 1,
+            16: 1,
+            17: 3,
+            18: 2,
+            19: 1,
+            20: 1,
+            21: 2,
+            22: 2,
+            23: 1,
+            24: 1,
+            25: 1,
+            26: 2,
+            27: 1,
+            28: 1,
+            29: 2,
+            30: 1,
+            31: 1,
+            32: 1,
+            33: 1,
+            34: 2,
+            35: 1,
+            36: 1,
+            37: 1,
+            38: 1,
+            39: 1,
+            40: 1,
+            41: 2,
+            42: 1,
+            43: 1,
+            44: 1,
+            45: 3,
+            46: 1,
+            47: 1,
+            48: 1,
+            49: 1,
+            50: 1,
+            51: 1,
+            52: 1,
+            53: 1,
+            54: 1,
+        },
+    }
+    material_info = pd.DataFrame.from_dict(material_info)
+
+    if type(parameters.get("rebi_material_nome", "")) == list:
+        materiais_nomes = [nome.lower() for nome in parameters["rebi_material_nome"]]
+    else:
+        materiais_nomes = [parameters.get("rebi_material_nome", "").lower()]
+
+    nome = materiais_nomes[0]
+    # limite_itens = material_info.loc[material_info["nome"] == nome, "limite_itens"].values[0]
+    unidade_medida_item = material_info.loc[material_info["nome"] == nome, "unidade_medida"].values[
+        0
+    ]
+
+    parameters[
+        "rebi_material_pergunta_nome_quantidade"
+    ] = f"{unidade_medida_item} de {nome.capitalize()}"
+
+    return message, parameters
+
+
+async def rebi_orientacoes_finais_especificas(request_data: dict) -> tuple[str, dict]:
+    message = ""
+    parameters = request_data["sessionInfo"]["parameters"]
+
+    indicador_mensagem_especifica = False
+    for material_nome in parameters.get("rebi_material_nome_informado", []):
+        if message:
+            message += "\n\n"
+
+        if material_nome in ["entulho"]:
+            message += (
+                "*Entulho*\n"
+                "\n"
+                "Esse serviço é destinado à remoção gratuita de entulhos de pequenas obras residenciais, como cascalho da parede quebrada, ou qualquer outro material que tenha cimento, ou telha quebrada que possa ser ensacada.\n"
+                "\n"
+                "Os entulhos deverão estar armazenados conforme:\n"
+                "\n"
+                "- Em sacos de 20 litros, com metragem de 32cm x 56cm, comprados em lojas de material de construção;\n"
+                "\n"
+                "- É proibida a utilização do saco de ráfia, ração para animal ou farinha;\n"
+                "\n"
+                "- Remoção máxima de 150 sacos de entulho de obras, por pedido;"
+            )
+        elif (
+            material_nome
+            in [
+                "cama de casal",
+                "cama de solteiro",
+                "galhadas",
+                "armário de alumínio de cozinha/banheiro",
+                "armário de 4 portas duplex/guarda roupa",
+                "garrafas de cerveja / vidro",
+            ]
+            and not indicador_mensagem_especifica
+        ):
+            message += "- Camas e armários deverão estar desmontados e amarrados, galhos deverão estar amarrados, materiais cortantes (como vidro e vergalhão) deverão estar embalados, preferencialmente com papelão, avisando ao gari o tipo de material;"
+            indicador_mensagem_especifica = True
 
     return message, parameters
