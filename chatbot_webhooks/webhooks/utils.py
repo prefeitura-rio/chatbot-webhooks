@@ -190,6 +190,18 @@ async def address_find_street_number(address: str) -> str:
     return lista_numeros[-1]
 
 
+def fix_unicode(text: str) -> str:
+    """
+    This function fixes the unicode characters in the text that are not escaped.
+    """
+    regex = re.compile(r"u00([a-fA-F0-9]{2})")
+
+    def replace(match):
+        return chr(int(match.group(1), 16))
+
+    return regex.sub(replace, text)
+
+
 async def get_credentials_from_env() -> service_account.Credentials:
     """
     Gets credentials from env vars
