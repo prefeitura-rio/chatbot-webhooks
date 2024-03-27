@@ -9,6 +9,7 @@ from loguru import logger
 from chatbot_webhooks import config
 from chatbot_webhooks.dependencies import validate_token
 from chatbot_webhooks.webhooks.middleware import detect_intent_text
+from chatbot_webhooks.webhooks.utils import fix_unicode
 
 router = APIRouter(prefix="/chat", tags=["chat"], dependencies=[Depends(validate_token)])
 
@@ -70,6 +71,10 @@ async def input_ascsac(request: Request) -> Response:
     except Exception:  # noqa
         logger.exception(f"Request {request_id} body does not contain user info")
         return Response(content="Malformed request", status_code=400)
+
+    raw_message = message
+    message = fix_unicode(message)
+    logger.info(f"{request_id} - Message before fix: '{raw_message}'. After fix: '{message}'")
 
     logger.info(f"{request_id} - Received message '{message}' from user '{session_id}'")
     if session_id == "":
